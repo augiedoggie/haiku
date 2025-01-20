@@ -38,6 +38,7 @@
 
 #include <PrivateScreen.h>
 #include <ServerProtocol.h>
+#include <ServerReadOnlyMemory.h>
 #include <ViewPrivate.h>
 #include <WindowInfo.h>
 
@@ -470,7 +471,6 @@ Desktop::~Desktop()
 {
 	delete_area(fSharedReadOnlyArea);
 	delete_port(fMessagePort);
-	gFontManager->DetachUser(fUserID);
 
 	free(fTargetScreen);
 }
@@ -495,15 +495,13 @@ Desktop::Init()
 	// desktop settings, since it is used there already
 	InitializeColorMap();
 
-	const size_t areaSize = B_PAGE_SIZE;
+	const size_t areaSize = sizeof(server_read_only_memory);
 	char name[B_OS_NAME_LENGTH];
 	snprintf(name, sizeof(name), "d:%d:shared read only", fUserID);
 	fSharedReadOnlyArea = create_area(name, (void **)&fServerReadOnlyMemory,
 		B_ANY_ADDRESS, areaSize, B_NO_LOCK, B_READ_AREA | B_WRITE_AREA | B_CLONEABLE_AREA);
 	if (fSharedReadOnlyArea < B_OK)
 		return fSharedReadOnlyArea;
-
-	gFontManager->AttachUser(fUserID);
 
 	fSettings.SetTo(new DesktopSettingsPrivate(fServerReadOnlyMemory));
 
@@ -688,7 +686,7 @@ Desktop::SetCursor(ServerCursor* newCursor)
 	if (newCursor == fCursor)
 		return;
 
-	fCursor = newCursor;
+	fCursor.SetTo(newCursor, false);
 
 	if (!fManagementCursor.IsSet())
 		HWInterface()->SetCursor(newCursor);
@@ -708,7 +706,7 @@ Desktop::SetManagementCursor(ServerCursor* newCursor)
 	if (newCursor == fManagementCursor)
 		return;
 
-	fManagementCursor = newCursor;
+	fManagementCursor.SetTo(newCursor, false);
 
 	HWInterface()->SetCursor(newCursor != NULL ? newCursor : fCursor.Get());
 }

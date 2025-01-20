@@ -65,7 +65,6 @@
 #include "ServerPicture.h"
 #include "ServerTokenSpace.h"
 #include "ServerWindow.h"
-#include "SystemPalette.h"
 #include "Window.h"
 
 
@@ -676,7 +675,7 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 
 			status_t error = gDecorManager.SetDecorator(path, fDesktop);
 
-			fLink.Attach<status_t>(error);
+			fLink.StartMessage(error);
 			fLink.Flush();
 
 			if (error == B_OK)
@@ -1248,27 +1247,46 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 			break;
 		}
 
-		case AS_REFERENCE_CURSOR:
+		case AS_CLONE_CURSOR:
 		{
 			STRACE(("ServerApp %s: Reference BCursor\n", Signature()));
 
 			// Attached data:
-			// 1) int32 token ID of the cursor to reference
+			// 1) int32 token ID of the cursor to clone
 
 			int32 token;
 			if (link.Read<int32>(&token) != B_OK)
 				break;
 
-			if (!fDesktop->GetCursorManager().Lock())
-				break;
+			status_t status = B_ERROR;
+			ServerCursor* cursor = NULL;
 
-			ServerCursor* cursor
-				= fDesktop->GetCursorManager().FindCursor(token);
-			if (cursor != NULL)
-				cursor->AcquireReference();
+			if (fDesktop->GetCursorManager().Lock()) {
+				ServerCursor* existingCursor
+					= fDesktop->GetCursorManager().FindCursor(token);
+				if (existingCursor != NULL)
+					cursor = new(std::nothrow) ServerCursor(existingCursor);
+				if (cursor != NULL) {
+					cursor->SetOwningTeam(fClientTeam);
+					token = fDesktop->GetCursorManager().AddCursor(cursor);
+					if (token < 0) {
+						delete cursor;
+						cursor = NULL;
+					}
+				}
 
-			fDesktop->GetCursorManager().Unlock();
+				fDesktop->GetCursorManager().Unlock();
+			}
 
+			if (cursor != NULL) {
+				// Synchronous message - BApplication is waiting on the
+				// cursor's ID
+				fLink.StartMessage(B_OK);
+				fLink.Attach<int32>(cursor->Token());
+			} else
+				fLink.StartMessage(status);
+
+			fLink.Flush();
 			break;
 		}
 
@@ -1288,8 +1306,8 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 
 			ServerCursor* cursor
 				= fDesktop->GetCursorManager().FindCursor(token);
-			if (cursor != NULL)
-				cursor->ReleaseReference();
+			if (cursor != NULL && cursor->OwningTeam() == fClientTeam)
+				fDesktop->GetCursorManager().RemoveCursor(cursor);
 
 			fDesktop->GetCursorManager().Unlock();
 
@@ -1910,8 +1928,10 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 			FTRACE(("ServerApp %s: AS_GET_FONT_LIST_REVISION\n", Signature()));
 
 			fLink.StartMessage(B_OK);
-			fLink.Attach<int32>(
-				gFontManager->CheckRevision(fDesktop->UserID()));
+			gFontManager->Lock();
+			fLink.Attach<uint32>(gFontManager->Revision());
+				// TODO: get value per fDesktop->UserID()
+			gFontManager->Unlock();
 			fLink.Flush();
 			break;
 		}
@@ -2014,7 +2034,7 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 			// 1) font_family - name of font family to use
 			// 2) font_style - name of style in family
 			// 3) family ID - only used if 1) is empty
-			// 4) style ID - only used if 2) is empty
+			// 4) style ID - only used if 1) and 2) are empty
 			// 5) face - the font's current face
 
 			// Returns:
@@ -2487,6 +2507,7 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 			// 3) int32 - numChars
 			// 4) int32 - numBytes
 			// 5) char - the char buffer with size numBytes
+			// 6) bool - whether to try fallback fonts
 
 			uint16 familyID, styleID;
 			link.Read<uint16>(&familyID);
@@ -2506,13 +2527,15 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 
 			link.Read(charArray, numBytes);
 
+			bool useFallbacks;
+			link.Read<bool>(&useFallbacks);
+
 			ServerFont font;
 			status_t status = font.SetFamilyAndStyle(familyID, styleID,
 				fAppFontManager);
 
 			if (status == B_OK) {
-				status = font.GetHasGlyphs(charArray, numBytes, numChars,
-					hasArray);
+				status = font.GetHasGlyphs(charArray, numBytes, numChars, hasArray, useFallbacks);
 				if (status == B_OK) {
 					fLink.StartMessage(B_OK);
 					fLink.Attach(hasArray, numChars * sizeof(bool));
@@ -3146,24 +3169,6 @@ ServerApp::_DispatchMessage(int32 code, BPrivate::LinkReceiver& link)
 			fLink.StartMessage(status);
 			if (status == B_OK)
 				fLink.Attach<BRect>(frame);
-
-			fLink.Flush();
-			break;
-		}
-
-		case AS_SCREEN_GET_COLORMAP:
-		{
-			STRACE(("ServerApp %s: AS_SCREEN_GET_COLORMAP\n", Signature()));
-
-			int32 id;
-			link.Read<int32>(&id);
-
-			const color_map* colorMap = SystemColorMap();
-			if (colorMap != NULL) {
-				fLink.StartMessage(B_OK);
-				fLink.Attach<color_map>(*colorMap);
-			} else
-				fLink.StartMessage(B_ERROR);
 
 			fLink.Flush();
 			break;

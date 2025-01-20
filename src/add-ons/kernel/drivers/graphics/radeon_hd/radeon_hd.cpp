@@ -115,8 +115,9 @@ mapAtomBIOSACPI(radeon_info &info, uint32& romSize)
 		|| !memcmp(&info.atom_buffer[romHeader + 4], "MOTA", 4);
 
 	if (romValid == true) {
-		set_area_protection(info.rom_area,
-			B_KERNEL_READ_AREA | B_CLONEABLE_AREA);
+		// XXX: We should only KERNEL_READ_AREA + CLONE here, but AtomBIOS calls fail w/RO #19348
+		//set_area_protection(info.rom_area,
+		//	B_KERNEL_READ_AREA | B_CLONEABLE_AREA);
 		ERROR("%s: AtomBIOS verified and locked (%" B_PRIu32 ")\n", __func__, romSize);
 	} else
 		ERROR("%s: AtomBIOS memcpy failed!\n", __func__);
@@ -227,8 +228,9 @@ mapAtomBIOS(radeon_info &info, phys_addr_t romBase, uint32 romSize,
 		|| !memcmp(&info.atom_buffer[romHeader + 4], "MOTA", 4);
 
 	if (romValid == true) {
-		set_area_protection(info.rom_area,
-			B_KERNEL_READ_AREA | B_CLONEABLE_AREA);
+		// XXX: We should only KERNEL_READ_AREA + CLONE here, but AtomBIOS calls fail w/RO #19348
+		//set_area_protection(info.rom_area,
+		//	B_KERNEL_READ_AREA | B_CLONEABLE_AREA);
 		ERROR("%s: AtomBIOS verified and locked (%" B_PRIu32 ")\n", __func__, romSize);
 	} else
 		ERROR("%s: AtomBIOS memcpy failed!\n", __func__);
@@ -806,7 +808,7 @@ radeon_hd_init(radeon_info &info)
 		(size_t)info.shared_info->frame_buffer_size * 1024);
 
 	// Turn on write combining for the frame buffer area
-	vm_set_area_memory_type(info.framebuffer_area, fbAddr, B_MTR_WC);
+	vm_set_area_memory_type(info.framebuffer_area, fbAddr, B_WRITE_COMBINING_MEMORY);
 
 	frambufferMapper.Detach();
 

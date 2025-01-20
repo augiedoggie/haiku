@@ -44,9 +44,9 @@
 #include "Volume.h"
 
 // default volume name
-static const char *kDefaultVolumeName = "RAM FS";
+static const char *kDefaultVolumeName = "RAMFS";
 
-// NodeListenerGetPrimaryKey
+
 class NodeListenerGetPrimaryKey {
 public:
 	inline Node *operator()(const NodeListenerValue &a)
@@ -60,7 +60,6 @@ public:
 	}
 };
 
-// NodeListenerGetSecondaryKey
 class NodeListenerGetSecondaryKey {
 public:
 	inline NodeListener *operator()(const NodeListenerValue &a)
@@ -74,7 +73,6 @@ public:
 	}
 };
 
-// NodeListenerTree
 typedef TwoKeyAVLTree<NodeListenerValue, Node*,
 					  TwoKeyAVLTreeStandardCompare<Node*>,
 					  NodeListenerGetPrimaryKey, NodeListener*,
@@ -82,7 +80,7 @@ typedef TwoKeyAVLTree<NodeListenerValue, Node*,
 					  NodeListenerGetSecondaryKey > _NodeListenerTree;
 class NodeListenerTree : public _NodeListenerTree {};
 
-// EntryListenerGetPrimaryKey
+
 class EntryListenerGetPrimaryKey {
 public:
 	inline Entry *operator()(const EntryListenerValue &a)
@@ -96,7 +94,7 @@ public:
 	}
 };
 
-// EntryListenerGetSecondaryKey
+
 class EntryListenerGetSecondaryKey {
 public:
 	inline EntryListener *operator()(const EntryListenerValue &a)
@@ -110,7 +108,7 @@ public:
 	}
 };
 
-// EntryListenerTree
+
 typedef TwoKeyAVLTree<EntryListenerValue, Entry*,
 					  TwoKeyAVLTreeStandardCompare<Entry*>,
 					  EntryListenerGetPrimaryKey, EntryListener*,
@@ -124,16 +122,16 @@ class EntryListenerTree : public _EntryListenerTree {};
 	\brief Represents a volume.
 */
 
-// constructor
+
 Volume::Volume(fs_volume* volume)
 	:
 	fVolume(volume),
+	fName(kDefaultVolumeName),
 	fNextNodeID(kRootParentID + 1),
 	fNodeTable(NULL),
 	fDirectoryEntryTable(NULL),
 	fIndexDirectory(NULL),
 	fRootDirectory(NULL),
-	fName(kDefaultVolumeName),
 	fNodeListeners(NULL),
 	fAnyNodeListeners(),
 	fEntryListeners(NULL),
@@ -142,23 +140,25 @@ Volume::Volume(fs_volume* volume)
 	fMounted(false)
 {
 	rw_lock_init(&fLocker, "ramfs volume");
-	recursive_lock_init(&fIteratorLocker, "ramfs iterators");
+	recursive_lock_init(&fListenersLock, "ramfs listeners");
+	recursive_lock_init(&fIteratorLock, "ramfs iterators");
+	recursive_lock_init(&fAttributeIteratorLock, "ramfs attribute iterators");
 	recursive_lock_init(&fQueryLocker, "ramfs queries");
 }
 
 
-// destructor
 Volume::~Volume()
 {
 	Unmount();
 
-	recursive_lock_destroy(&fIteratorLocker);
+	recursive_lock_destroy(&fAttributeIteratorLock);
+	recursive_lock_destroy(&fIteratorLock);
 	recursive_lock_destroy(&fQueryLocker);
+	recursive_lock_destroy(&fListenersLock);
 	rw_lock_destroy(&fLocker);
 }
 
 
-// Mount
 status_t
 Volume::Mount(uint32 flags)
 {
@@ -217,7 +217,7 @@ Volume::Mount(uint32 flags)
 	RETURN_ERROR(error);
 }
 
-// Unmount
+
 status_t
 Volume::Unmount()
 {
@@ -254,7 +254,7 @@ Volume::Unmount()
 	return B_OK;
 }
 
-// CountBlocks
+
 off_t
 Volume::CountBlocks() const
 {
@@ -262,14 +262,14 @@ Volume::CountBlocks() const
 	return 0;
 }
 
-// CountFreeBlocks
+
 off_t
 Volume::CountFreeBlocks() const
 {
 	return vm_page_num_free_pages();
 }
 
-// SetName
+
 status_t
 Volume::SetName(const char *name)
 {
@@ -281,14 +281,14 @@ Volume::SetName(const char *name)
 	return error;
 }
 
-// GetName
+
 const char *
 Volume::GetName() const
 {
 	return fName.GetString();
 }
 
-// NewVNode
+
 status_t
 Volume::NewVNode(Node *node)
 {
@@ -301,7 +301,7 @@ Volume::NewVNode(Node *node)
 	return error;
 }
 
-// PublishVNode
+
 status_t
 Volume::PublishVNode(Node *node)
 {
@@ -315,14 +315,14 @@ Volume::PublishVNode(Node *node)
 	return error;
 }
 
-// GetVNode
+
 status_t
 Volume::GetVNode(ino_t id, Node **node)
 {
 	return (fMounted ? get_vnode(FSVolume(), id, (void**)node) : B_BAD_VALUE);
 }
 
-// GetVNode
+
 status_t
 Volume::GetVNode(Node *node)
 {
@@ -337,21 +337,21 @@ Volume::GetVNode(Node *node)
 	return error;
 }
 
-// PutVNode
+
 status_t
 Volume::PutVNode(ino_t id)
 {
 	return (fMounted ? put_vnode(FSVolume(), id) : B_BAD_VALUE);
 }
 
-// PutVNode
+
 status_t
 Volume::PutVNode(Node *node)
 {
 	return (fMounted ? put_vnode(FSVolume(), node->GetID()) : B_BAD_VALUE);
 }
 
-// RemoveVNode
+
 status_t
 Volume::RemoveVNode(Node *node)
 {
@@ -364,14 +364,14 @@ Volume::RemoveVNode(Node *node)
 	return error;
 }
 
-// UnremoveVNode
+
 status_t
 Volume::UnremoveVNode(Node *node)
 {
 	return (fMounted ? unremove_vnode(FSVolume(), node->GetID()) : B_BAD_VALUE);
 }
 
-// NodeAdded
+
 status_t
 Volume::NodeAdded(Node *node)
 {
@@ -402,7 +402,7 @@ Volume::NodeAdded(Node *node)
 	return error;
 }
 
-// NodeRemoved
+
 status_t
 Volume::NodeRemoved(Node *node)
 {
@@ -433,7 +433,7 @@ Volume::NodeRemoved(Node *node)
 	return error;
 }
 
-// FindNode
+
 /*!	\brief Finds the node identified by a ino_t.
 
 	\note The method does not initialize the parent ID for non-directory nodes.
@@ -454,7 +454,7 @@ Volume::FindNode(ino_t id, Node **node)
 	return error;
 }
 
-// AddNodeListener
+
 status_t
 Volume::AddNodeListener(NodeListener *listener, Node *node, uint32 flags)
 {
@@ -463,7 +463,9 @@ Volume::AddNodeListener(NodeListener *listener, Node *node, uint32 flags)
 		|| !(flags & NODE_LISTEN_ALL)) {
 		return B_BAD_VALUE;
 	}
+
 	// add the listener to the right container
+	RecursiveLocker locker(fListenersLock);
 	status_t error = B_OK;
 	NodeListenerValue value(listener, node, flags);
 	if (flags & NODE_LISTEN_ANY_NODE) {
@@ -474,12 +476,14 @@ Volume::AddNodeListener(NodeListener *listener, Node *node, uint32 flags)
 	return error;
 }
 
-// RemoveNodeListener
+
 status_t
 Volume::RemoveNodeListener(NodeListener *listener, Node *node)
 {
 	if (!listener)
 		return B_BAD_VALUE;
+
+	RecursiveLocker locker(fListenersLock);
 	status_t error = B_OK;
 	if (node)
 		error = fNodeListeners->Remove(node, listener);
@@ -491,7 +495,7 @@ Volume::RemoveNodeListener(NodeListener *listener, Node *node)
 	return error;
 }
 
-// EntryAdded
+
 status_t
 Volume::EntryAdded(ino_t id, Entry *entry)
 {
@@ -522,7 +526,7 @@ Volume::EntryAdded(ino_t id, Entry *entry)
 	return error;
 }
 
-// EntryRemoved
+
 status_t
 Volume::EntryRemoved(ino_t id, Entry *entry)
 {
@@ -553,7 +557,7 @@ Volume::EntryRemoved(ino_t id, Entry *entry)
 	return error;
 }
 
-// FindEntry
+
 status_t
 Volume::FindEntry(ino_t id, const char *name, Entry **entry)
 {
@@ -566,7 +570,7 @@ Volume::FindEntry(ino_t id, const char *name, Entry **entry)
 	return error;
 }
 
-// AddEntryListener
+
 status_t
 Volume::AddEntryListener(EntryListener *listener, Entry *entry, uint32 flags)
 {
@@ -575,7 +579,9 @@ Volume::AddEntryListener(EntryListener *listener, Entry *entry, uint32 flags)
 		|| !(flags & ENTRY_LISTEN_ALL)) {
 		return B_BAD_VALUE;
 	}
+
 	// add the listener to the right container
+	RecursiveLocker locker(fListenersLock);
 	status_t error = B_OK;
 	EntryListenerValue value(listener, entry, flags);
 	if (flags & ENTRY_LISTEN_ANY_ENTRY) {
@@ -586,12 +592,14 @@ Volume::AddEntryListener(EntryListener *listener, Entry *entry, uint32 flags)
 	return error;
 }
 
-// RemoveEntryListener
+
 status_t
 Volume::RemoveEntryListener(EntryListener *listener, Entry *entry)
 {
 	if (!listener)
 		return B_BAD_VALUE;
+
+	RecursiveLocker locker(fListenersLock);
 	status_t error = B_OK;
 	if (entry)
 		error = fEntryListeners->Remove(entry, listener);
@@ -603,7 +611,7 @@ Volume::RemoveEntryListener(EntryListener *listener, Entry *entry)
 	return error;
 }
 
-// NodeAttributeAdded
+
 status_t
 Volume::NodeAttributeAdded(ino_t id, Attribute *attribute)
 {
@@ -620,7 +628,7 @@ Volume::NodeAttributeAdded(ino_t id, Attribute *attribute)
 	return error;
 }
 
-// NodeAttributeRemoved
+
 status_t
 Volume::NodeAttributeRemoved(ino_t id, Attribute *attribute)
 {
@@ -646,35 +654,35 @@ Volume::NodeAttributeRemoved(ino_t id, Attribute *attribute)
 	return error;
 }
 
-// GetNameIndex
+
 NameIndex *
 Volume::GetNameIndex() const
 {
 	return (fIndexDirectory ? fIndexDirectory->GetNameIndex() : NULL);
 }
 
-// GetLastModifiedIndex
+
 LastModifiedIndex *
 Volume::GetLastModifiedIndex() const
 {
 	return (fIndexDirectory ? fIndexDirectory->GetLastModifiedIndex() : NULL);
 }
 
-// GetSizeIndex
+
 SizeIndex *
 Volume::GetSizeIndex() const
 {
 	return (fIndexDirectory ? fIndexDirectory->GetSizeIndex() : NULL);
 }
 
-// FindIndex
+
 Index *
 Volume::FindIndex(const char *name)
 {
 	return (fIndexDirectory ? fIndexDirectory->FindIndex(name) : NULL);
 }
 
-// FindAttributeIndex
+
 AttributeIndex *
 Volume::FindAttributeIndex(const char *name, uint32 type)
 {
@@ -682,7 +690,7 @@ Volume::FindAttributeIndex(const char *name, uint32 type)
 			? fIndexDirectory->FindAttributeIndex(name, type) : NULL);
 }
 
-// AddQuery
+
 void
 Volume::AddQuery(Query *query)
 {
@@ -692,7 +700,7 @@ Volume::AddQuery(Query *query)
 		fQueries.Insert(query);
 }
 
-// RemoveQuery
+
 void
 Volume::RemoveQuery(Query *query)
 {
@@ -702,7 +710,7 @@ Volume::RemoveQuery(Query *query)
 		fQueries.Remove(query);
 }
 
-// UpdateLiveQueries
+
 void
 Volume::UpdateLiveQueries(Entry *entry, Node* node, const char *attribute,
 	int32 type, const uint8 *oldKey, size_t oldLength, const uint8 *newKey,
@@ -718,7 +726,7 @@ Volume::UpdateLiveQueries(Entry *entry, Node* node, const char *attribute,
 	}
 }
 
-// GetAllocationInfo
+
 void
 Volume::GetAllocationInfo(AllocationInfo &info)
 {
@@ -733,7 +741,7 @@ Volume::GetAllocationInfo(AllocationInfo &info)
 	info.AddStringAllocation(fName.GetLength());
 }
 
-// ReadLock
+
 bool
 Volume::ReadLock()
 {
@@ -743,14 +751,14 @@ Volume::ReadLock()
 	return ok;
 }
 
-// ReadUnlock
+
 void
 Volume::ReadUnlock()
 {
 	rw_lock_read_unlock(&fLocker);
 }
 
-// WriteLock
+
 bool
 Volume::WriteLock()
 {
@@ -760,24 +768,9 @@ Volume::WriteLock()
 	return ok;
 }
 
-// WriteUnlock
+
 void
 Volume::WriteUnlock()
 {
 	rw_lock_write_unlock(&fLocker);
 }
-
-// IteratorLock
-bool
-Volume::IteratorLock()
-{
-	return recursive_lock_lock(&fIteratorLocker) == B_OK;
-}
-
-// IteratorUnlock
-void
-Volume::IteratorUnlock()
-{
-	recursive_lock_unlock(&fIteratorLocker);
-}
-

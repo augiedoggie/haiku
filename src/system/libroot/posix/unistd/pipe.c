@@ -10,14 +10,28 @@
 #include <syscalls.h>
 
 
-int
-pipe(int streams[2])
+static int
+common_pipe(int streams[2], int flags)
 {
-	status_t error = _kern_create_pipe(streams);
+	status_t error = _kern_create_pipe(streams, flags);
 	if (error != B_OK) {
 		__set_errno(error);
 		return -1;
 	}
 
 	return 0;
+}
+
+
+int
+pipe2(int streams[2], int flags)
+{
+	return common_pipe(streams, flags);
+}
+
+
+int
+pipe(int streams[2])
+{
+	return common_pipe(streams, 0);
 }

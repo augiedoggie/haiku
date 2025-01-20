@@ -22,6 +22,7 @@
 
 #include <Bitmap.h>
 #include <Debug.h>
+#include <OS.h>
 #include <String.h>
 
 #include "Utilities.h"
@@ -86,7 +87,7 @@ AVCodecDecoder::AVCodecDecoder()
 	fFrame(0),
 	fIsAudio(false),
 	fCodec(NULL),
-	fCodecContext(avcodec_alloc_context3(NULL)),
+	fCodecContext(NULL),
 	fResampleContext(NULL),
 	fDecodedData(NULL),
 	fDecodedDataSizeInBytes(0),
@@ -126,24 +127,17 @@ AVCodecDecoder::AVCodecDecoder()
 	fFilterFrame(NULL)
 {
 	TRACE("AVCodecDecoder::AVCodecDecoder()\n");
-
-	system_info info;
-	get_system_info(&info);
-
-	fCodecContext->err_recognition = AV_EF_CAREFUL;
-	fCodecContext->error_concealment = 3;
-	fCodecContext->thread_count = info.cpu_count;
 }
 
 
 AVCodecDecoder::~AVCodecDecoder()
 {
-	TRACE("[%c] AVCodecDecoder::~AVCodecDecoder()\n", fIsAudio?('a'):('v'));
+	TRACE("[%c] AVCodecDecoder::~AVCodecDecoder()\n", fIsAudio ? 'a' : 'v');
 
 #if DO_PROFILING
 	if (profileCounter > 0) {
 		printf("[%c] profile: d1 = %lld, d2 = %lld (%lld)\n",
-			fIsAudio?('a'):('v'), decodingTime / profileCounter,
+			fIsAudio ? 'a' : 'v', decodingTime / profileCounter,
 			conversionTime / profileCounter, fFrame);
 	}
 #endif
@@ -156,8 +150,10 @@ AVCodecDecoder::~AVCodecDecoder()
 	av_frame_free(&fRawDecodedPicture);
 	av_free(fRawDecodedAudio->opaque);
 	av_frame_free(&fRawDecodedAudio);
-	fCodecContext->extradata = NULL;
-	avcodec_free_context(&fCodecContext);
+	if (fCodecContext != NULL) {
+		fCodecContext->extradata = NULL;
+		avcodec_free_context(&fCodecContext);
+	}
 	av_frame_free(&fDecodedDataBuffer);
 
 	av_frame_free(&fFilterFrame);
@@ -193,16 +189,16 @@ AVCodecDecoder::Setup(media_format* ioEncodedFormat, const void* infoBuffer,
 		return B_ERROR;
 
 	fIsAudio = (ioEncodedFormat->type == B_MEDIA_ENCODED_AUDIO);
-	TRACE("[%c] AVCodecDecoder::Setup()\n", fIsAudio?('a'):('v'));
+	TRACE("[%c] AVCodecDecoder::Setup()\n", fIsAudio ? 'a' : 'v');
 
 #ifdef TRACE_AV_CODEC
 	char buffer[1024];
 	string_for_format(*ioEncodedFormat, buffer, sizeof(buffer));
-	TRACE("[%c]   input_format = %s\n", fIsAudio?('a'):('v'), buffer);
-	TRACE("[%c]   infoSize = %ld\n", fIsAudio?('a'):('v'), infoSize);
-	TRACE("[%c]   user_data_type = %08lx\n", fIsAudio?('a'):('v'),
+	TRACE("[%c]   input_format = %s\n", fIsAudio ? 'a' : 'v', buffer);
+	TRACE("[%c]   infoSize = %ld\n", fIsAudio ? 'a' : 'v', infoSize);
+	TRACE("[%c]   user_data_type = %08" B_PRIx32 "\n", fIsAudio ? 'a' : 'v',
 		ioEncodedFormat->user_data_type);
-	TRACE("[%c]   meta_data_size = %ld\n", fIsAudio?('a'):('v'),
+	TRACE("[%c]   meta_data_size = %" B_PRId32 "\n", fIsAudio ? 'a' : 'v',
 		ioEncodedFormat->MetaDataSize());
 #endif
 
@@ -214,8 +210,8 @@ AVCodecDecoder::Setup(media_format* ioEncodedFormat, const void* infoBuffer,
 		fCodec = avcodec_find_decoder(static_cast<CodecID>(
 			description.u.misc.codec));
 		if (fCodec == NULL) {
-			TRACE("  unable to find the correct FFmpeg "
-				"decoder (id = %lu)\n", description.u.misc.codec);
+			TRACE("  unable to find the correct FFmpeg decoder (id = %" B_PRIu32 ")\n",
+				description.u.misc.codec);
 			return B_ERROR;
 		}
 		TRACE("  found decoder %s\n", fCodec->name);
@@ -294,19 +290,29 @@ status_t
 AVCodecDecoder::NegotiateOutputFormat(media_format* inOutFormat)
 {
 	TRACE("AVCodecDecoder::NegotiateOutputFormat() [%c] \n",
-		fIsAudio?('a'):('v'));
+		fIsAudio ? 'a' : 'v');
 
 #ifdef TRACE_AV_CODEC
 	char buffer[1024];
 	string_for_format(*inOutFormat, buffer, sizeof(buffer));
-	TRACE("  [%c]  requested format = %s\n", fIsAudio?('a'):('v'), buffer);
+	TRACE("  [%c]  requested format = %s\n", fIsAudio ? 'a' : 'v', buffer);
 #endif
 
 	// close any previous instance
-	fCodecContext->extradata = NULL;
-	avcodec_free_context(&fCodecContext);
+	if (fCodecContext != NULL) {
+		fCodecContext->extradata = NULL;
+		avcodec_free_context(&fCodecContext);
+	}
+
 	fCodecContext = avcodec_alloc_context3(fCodec);
 	fCodecInitDone = false;
+
+	system_info info;
+	get_system_info(&info);
+
+	fCodecContext->err_recognition = AV_EF_CAREFUL;
+	fCodecContext->error_concealment = 3;
+	fCodecContext->thread_count = info.cpu_count;
 
 	if (fIsAudio)
 		return _NegotiateAudioOutputFormat(inOutFormat);
@@ -348,22 +354,14 @@ AVCodecDecoder::_ResetTempPacket()
 static int
 get_channel_count(AVCodecContext* context)
 {
-#if LIBAVCODEC_VERSION_MAJOR >= 60
 	return context->ch_layout.nb_channels;
-#else
-	return context->channels;
-#endif
 }
 
 
 static void
 set_channel_count(AVCodecContext* context, int count)
 {
-#if LIBAVCODEC_VERSION_MAJOR >= 60
 	context->ch_layout.nb_channels = count;
-#else
-	context->channels = count;
-#endif
 }
 
 
@@ -444,7 +442,6 @@ AVCodecDecoder::_NegotiateAudioOutputFormat(media_format* inOutFormat)
 
 	if (av_sample_fmt_is_planar(fCodecContext->sample_fmt)) {
 		fResampleContext = NULL;
-#if LIBAVCODEC_VERSION_MAJOR >= 60
 		swr_alloc_set_opts2(&fResampleContext,
 			&fCodecContext->ch_layout,
 			fCodecContext->request_sample_fmt,
@@ -453,22 +450,12 @@ AVCodecDecoder::_NegotiateAudioOutputFormat(media_format* inOutFormat)
 			fCodecContext->sample_fmt,
 			fCodecContext->sample_rate,
 			0, NULL);
-#else
-		fResampleContext = swr_alloc_set_opts(NULL,
-			fCodecContext->channel_layout,
-			fCodecContext->request_sample_fmt,
-			fCodecContext->sample_rate,
-			fCodecContext->channel_layout,
-			fCodecContext->sample_fmt,
-			fCodecContext->sample_rate,
-			0, NULL);
-#endif
 		swr_init(fResampleContext);
 	}
 
-	TRACE("  bit_rate = %d, sample_rate = %d, channels = %d, "
-		"output frame size: %d, count: %ld, rate: %.2f\n",
-		fCodecContext->bit_rate, fCodecContext->sample_rate, fCodecContext->channels,
+	TRACE("  bit_rate = %" PRId64 ", sample_rate = %d, channels = %d, "
+		"output frame size: %d, count: %" B_PRId32 ", rate: %.2f\n",
+		fCodecContext->bit_rate, fCodecContext->sample_rate, fCodecContext->ch_layout.nb_channels,
 		fOutputFrameSize, fOutputFrameCount, fOutputFrameRate);
 
 	return B_OK;
@@ -556,18 +543,32 @@ AVCodecDecoder::_NegotiateVideoOutputFormat(media_format* inOutFormat)
 		= fHeader.u.raw_video.pixel_width_aspect;
 	inOutFormat->u.raw_video.pixel_height_aspect
 		= fHeader.u.raw_video.pixel_height_aspect;
-	// The framerate in fCodecContext is set to 0 if the codec doesn't know the framerate. Some
-	// codecs work only at a fixed framerate, while others allow each frame to have its owm
-	// timestamp. For example a stream may switch from 50 to 60Hz, depending on how it was
-	// constructed. In that case, it's fine to leave the field_rate as 0 as well, the media kit
-	// will handle that just fine as long as each frame comes with a correct presentation timestamp.
-	// In fact, it seems better to not set the field_rate at all, rather than set it to a wrong
-	// value.
+	// The framerate in fCodecContext is not always equivalent to the field rate. Instead it can
+	// be some internal value of the codec, for example mpeg4 uses a framerate of 90000 and then
+	// the video frames have timestamps that are several hundred values apart. This allows for
+	// example mixing 50 and 60Hz video in the same stream.
+	//
+	// Normally in ffmepg, one would use av_guess_frame_rate to compute this, but we can't do this
+	// here because we don't have direct access to the AVFormatContext nor the AVStream (in our
+	// architecture these are only available in the AVFormatReader class). So we provide a similar
+	// implementation here, trying to guess from the input format properties and the info for the
+	// first frame which we just decoded (that updates fCodecContext inside ffmpeg).
+	//
+	// If we don't know, the field can also be set to 0, and we will still provide correct
+	// presentation timestamps for each individual frame.
 	//
 	// TODO The field_rate is twice the frame rate for interlaced streams, so we need to determine
 	// if we are decoding an interlaced stream, and wether ffmpeg delivers every half-frame or not
 	// in that case (since we let ffmpeg do the deinterlacing).
-	inOutFormat->u.raw_video.field_rate = av_q2d(fCodecContext->framerate);
+	float fromFormat = fInputFormat.u.encoded_video.output.field_rate;
+	if (fromFormat < 70)
+		inOutFormat->u.raw_video.field_rate = fromFormat;
+	// See if the codec knows better (adapted from av_guess_frame_rate in ffmpeg)
+	AVRational codec_fr = fCodecContext->framerate;
+	if (codec_fr.num > 0 && codec_fr.den > 0
+		&& (fromFormat == 0 || av_q2d(codec_fr) < fromFormat * 0.7)) {
+		inOutFormat->u.raw_video.field_rate = av_q2d(fCodecContext->framerate);
+	}
 	inOutFormat->u.raw_video.display.format = fOutputColorSpace;
 	inOutFormat->u.raw_video.display.line_width
 		= fHeader.u.raw_video.display_line_width;
@@ -752,7 +753,7 @@ AVCodecDecoder::_DecodeNextAudioFrame()
 	dump_ffframe_audio(fRawDecodedAudio, "ffaudi");
 #endif
 
-	TRACE_AUDIO("  frame count: %ld current: %lld\n",
+	TRACE_AUDIO("  frame count: %d current: %" B_PRId64 "\n",
 		fRawDecodedAudio->nb_samples, fFrame);
 
 	return B_OK;
@@ -826,11 +827,11 @@ AVCodecDecoder::_ApplyEssentialAudioContainerPropertiesToContext()
 		fCodecContext->extradata_size = fInputFormat.MetaDataSize();
 	}
 
-	TRACE("  bit_rate %d, sample_rate %d, channels %d, block_align %d, "
+	TRACE("  bit_rate %" PRId64 ", sample_rate %d, channels %d, block_align %d, "
 		"extradata_size %d\n",
 		fCodecContext->bit_rate,
 		fCodecContext->sample_rate,
-		fCodecContext->channels,
+		fCodecContext->ch_layout.nb_channels,
 		fCodecContext->block_align,
 		fCodecContext->extradata_size);
 }
@@ -1278,8 +1279,8 @@ AVCodecDecoder::_DecodeNextVideoFrame()
 
 			send_error = avcodec_send_packet(fCodecContext, fTempPacket);
 			if (send_error < 0 && send_error != AVERROR(EAGAIN)) {
-				TRACE("[v] AVCodecDecoder: ignoring error in decoding frame "
-				"%lld: %d\n", fFrame, error);
+				TRACE("[v] AVCodecDecoder: ignoring error in decoding frame %" B_PRId64 ": %d\n",
+					fFrame, error);
 			}
 
 			// Packet is consumed, clear it
@@ -1288,8 +1289,8 @@ AVCodecDecoder::_DecodeNextVideoFrame()
 
 			error = avcodec_receive_frame(fCodecContext, fRawDecodedPicture);
 			if (error != 0 && error != AVERROR(EAGAIN)) {
-				TRACE("[v] frame %lld - decoding error, error code: %d, "
-					"chunk size: %ld\n", fFrame, error, fChunkBufferSize);
+				TRACE("[v] frame %" B_PRId64 " decoding error: error code: %d, chunk size: %ld\n",
+					fFrame, error, fChunkBufferSize);
 			}
 
 		} while (error != 0);
@@ -1597,7 +1598,7 @@ AVCodecDecoder::_UpdateMediaHeaderForVideoFrame()
 	av_ts_make_time_string(timestamp,
 		fRawDecodedPicture->best_effort_timestamp, &fCodecContext->time_base);
 
-	TRACE("[v] start_time=%s field_sequence=%lu\n",
+	TRACE("[v] start_time=%s field_sequence=%" B_PRIu32 "\n",
 		timestamp, fHeader.u.raw_video.field_sequence);
 }
 
@@ -1630,11 +1631,7 @@ AVCodecDecoder::_DeinterlaceAndColorConvertVideoFrame()
 	AVFrame deinterlacedPicture;
 	bool useDeinterlacedPicture = false;
 
-#if LIBAVCODEC_VERSION_MAJOR >= 60
 	if (fRawDecodedPicture->flags & AV_FRAME_FLAG_INTERLACED) {
-#else
-	if (fRawDecodedPicture->interlaced_frame) {
-#endif
 		AVFrame rawPicture;
 		rawPicture.data[0] = fRawDecodedPicture->data[0];
 		rawPicture.data[1] = fRawDecodedPicture->data[1];
@@ -1727,11 +1724,7 @@ AVCodecDecoder::_DeinterlaceAndColorConvertVideoFrame()
 		}
 	}
 
-#if LIBAVCODEC_VERSION_MAJOR >= 60
 	if (fRawDecodedPicture->flags & AV_FRAME_FLAG_INTERLACED)
-#else
-	if (fRawDecodedPicture->interlaced_frame)
-#endif
 		av_freep(&deinterlacedPicture.data[0]);
 
 	return B_OK;

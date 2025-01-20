@@ -1,9 +1,10 @@
-1	ukrainian	x-vnd.Haiku-HaikuDepot	2231325175
+1	ukrainian	x-vnd.Haiku-HaikuDepot	2555742361
 Usage conditions download problem	ToLatestUserUsageConditionsWindow		Проблеми при завантаженні Умов користування
 Available packages	MainWindow		Доступні пакети
 It was not possible to create the new user.	UserLoginWindow		Не вдалося створити нового користувача.
 An unexpected error has been sent from the server [%li]	ServerHelper		Сервер надіслав неочікувану помилку [%li]
 Create account	UserLoginWindow		Створити обліковий запис
+Fetching changelog for package	PopulatePkgChangelogFromServerProcess		Отримую журнал змін для пакета
 Agree	ToLatestUserUsageConditionsWindow		Згоден
 Install %PackageTitle%	PackageManager		Інсталяція %PackageTitle%
 The response to the captcha was incorrect.	ServerHelper		Невірна відповідь на капчу.
@@ -46,6 +47,7 @@ Rating not possible	MainWindow		Оцінка неможлива
 Package update error	MainWindow		Помилка оновлення пакета
 %FIRST_PROCESS_DESCRIPTION% +{0, plural, one{# process} other{# processes}}	ProcessCoordinator		%FIRST_PROCESS_DESCRIPTION% +{0, plural, one{# процес} few{# процеси} other{# процесів}}
 Reboot required	PackageManager		Потрібна перезагрузка
+Fetching user ratings for package	PopulatePkgUserRatingsFromServerProcess		Отримую оцінки користувачів для пакета
 All packages	PackageListView		Усі пакети
 Send	RatePackageWindow		Надіслати
 Start package daemon	App		Запустити демон пакетів
@@ -113,6 +115,7 @@ The user does not exist or the wrong password was supplied. Check your credentia
 All repositories	MainWindow		Усі репозитарії
 Repository update error	LocalRepositoryUpdateProcess		Помилка оновлення репозитарія 
 Network error	ServerHelper		Помилка мережі
+HaikuDepot - %PackageName% %PackageVersion%	MainWindow		HaikuDepot - %PackageName% %PackageVersion%
 An error occurred while refreshing the repository: %error%	LocalRepositoryUpdateProcess		Під час оновлення репозитарія сталася помилка: %error%
 User Created	UserLoginWindow		Користувача створено
 Check for updates…	MainWindow		Перевірити на обнови…
@@ -128,6 +131,7 @@ No user ratings available.	PackageInfoView		Оцінювання користу�
 <no info>	PackageInfoView		<немає інформації>
 Usage conditions download problem	UserUsageConditions		Проблеми при завантаженні Умов користування
 An error has arisen downloading the password requirements required to create a new user. Check the log for details and try again. \nInformation about how to view the logs is available in the HaikuDepot section of the Haiku User Guide.	UserLoginWindow		Під час завантаження вимог до пароля, необхідних для створення нового користувача, виникла помилка. Перегляньте подробиці в журналі та повторіть спробу. \nІнформація про те, як переглядати журнали, доступна у розділі HaikuDepot Посібника користувача Haiku.
+Fetching screenshot	CacheScreenshotProcess		Отримую знімок екрана
 A network transport error has arisen communicating with the server system: %s	ServerHelper		Виникла помилка мережевого транспорту при взаємодії з серверною системою: %s
 Rating	PackageListView		Оцінка
 Synchronizing icons	ServerIconExportUpdateProcess		Синхронізація піктограм

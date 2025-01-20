@@ -1,4 +1,4 @@
-1	portuguese	x-vnd.Haiku-Appearance	663472720
+1	portuguese	x-vnd.Haiku-Appearance	211365410
 Control border	Colors tab		Limite do controlo
 Control mark	Colors tab		Marca de controlo
 Off	AntialiasingSettingsView		Desligado
@@ -36,13 +36,14 @@ Menu font:	Font view		Tipo de letra do menu:
 Bold font:	Font view		Tipo de letra negrito:
 %decorName\n\nAuthors:\n\t%decorAuthors\n\nURL: %decorURL\nLicense: %decorLic\n\n%decorDesc\n	DecorSettingsView		%decorName\n\nAutores:\n\t%decorAuthors\n\nURL: %decorURL\nLicença: %decorLic\n\n%decorDesc\n
 Choose Decorator	DecorSettingsView		Escolher Decorador
-Strong	AntialiasingSettingsView		Intenso
 Failure	Colors tab		Falha
+Strong	AntialiasingSettingsView		Intenso
 Double:	DecorSettingsView		Dupla:
 Selected menu item text	Colors tab		Texto do item de menu seleccionado
 Size:	Font Selection view		Tamanho:
 Panel background	Colors tab		Fundo do painel
 Plain font:	Font view		Tipo de letra normal:
+Automatically pick secondary colors	Colors tab		Selecionar cores secundárias automaticamente
 Window tab text	Colors tab		Texto do separador de janela
 Navigation pulse	Colors tab		Pulsação de navegação
 LCD subpixel	AntialiasingSettingsView		Subpíxel LCD

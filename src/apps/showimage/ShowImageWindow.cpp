@@ -407,7 +407,7 @@ ShowImageWindow::_BuildRatingMenu()
 	for (int32 i = 1; i <= 10; i++) {
 		BMessage* message = new BMessage(MSG_SET_RATING);
 		BString label;
-		label << i;
+		fNumberFormat.Format(label, i);
 		message->AddInt32("rating", i);
 		fRatingMenu->AddItem(new BMenuItem(label.String(), message));
 	}
@@ -444,8 +444,7 @@ ShowImageWindow::_AddMenus(BMenuBar* bar)
 	_AddItemMenu(menu, B_TRANSLATE("Move to Trash"), kMsgDeleteCurrentFile, 'T', 0, this);
 	_AddItemMenu(menu, B_TRANSLATE("Use as background" B_UTF8_ELLIPSIS),
 		MSG_DESKTOP_BACKGROUND, 0, 0, this);
-	_AddItemMenu(menu, B_TRANSLATE("Get info" B_UTF8_ELLIPSIS),
-		MSG_GET_INFO, 'I', 0, this);
+	_AddItemMenu(menu, B_TRANSLATE("Get info"), MSG_GET_INFO, 'I', 0, this);
 	menu->AddSeparatorItem();
 	_AddItemMenu(menu, B_TRANSLATE("Page setup" B_UTF8_ELLIPSIS),
 		MSG_PAGE_SETUP, 0, 0, this);
@@ -1149,15 +1148,21 @@ ShowImageWindow::_GetFileInfo(const entry_ref& ref)
 void
 ShowImageWindow::_UpdateStatusText(const BMessage* message)
 {
-	BString frameText;
+	BString frameText, height, width;
 	if (fImageView->Bitmap() != NULL) {
 		BRect bounds = fImageView->Bitmap()->Bounds();
-		frameText << bounds.IntegerWidth() + 1
-			<< "x" << bounds.IntegerHeight() + 1;
+		fNumberFormat.Format(width, bounds.IntegerWidth() + 1);
+		fNumberFormat.Format(height, bounds.IntegerHeight() + 1);
+		frameText.SetToFormat("%s × %s", width.String(), height.String());
 	}
-	BString pages;
-	if (fNavigator.PageCount() > 1)
-		pages << fNavigator.CurrentPage() << "/" << fNavigator.PageCount();
+
+	BString currentPage, pageCount, pages;
+	if (fNavigator.PageCount() > 1) {
+		fNumberFormat.Format(currentPage, fNavigator.CurrentPage());
+		fNumberFormat.Format(pageCount, fNavigator.PageCount());
+		pages.SetToFormat("%s / %s", currentPage.String(), pageCount.String());
+	}
+
 	fStatusView->Update(fNavigator.CurrentRef(), frameText, pages, fImageType,
 		fImageView->Zoom());
 }

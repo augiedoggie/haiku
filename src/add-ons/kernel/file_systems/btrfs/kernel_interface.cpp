@@ -24,7 +24,7 @@
 #define INFORM(x...) TRACE(x)
 #define init_debugging()
 #define exit_debugging()
-#define FUNCTION() dprintf("btrfs: %s()\n",__FUNCTION__);
+#define FUNCTION() dprintf("\33[34mbtrfs:\33[0m %s()\n",__PRETTY_FUNCTION__);
 #define REPORT_ERROR(status) \
 	dprintf("btrfs: %s:%d: %s\n", __FUNCTION__, __LINE__, strerror(status));
 #define RETURN_ERROR(err) \
@@ -541,8 +541,7 @@ btrfs_open(fs_volume* /*_volume*/, fs_vnode* _node, int openMode,
 	if (inode->IsDirectory() && (openMode & O_RWMASK) != 0)
 		return B_IS_A_DIRECTORY;
 
-	status_t status =  inode->CheckPermissions(open_mode_to_access(openMode)
-		| (openMode & O_TRUNC ? W_OK : 0));
+	status_t status =  inode->CheckPermissions(open_mode_to_access(openMode));
 	if (status != B_OK)
 		return status;
 
@@ -594,6 +593,7 @@ static status_t
 btrfs_read(fs_volume* _volume, fs_vnode* _node, void* _cookie, off_t pos,
 	void* buffer, size_t* _length)
 {
+	FUNCTION();
 	Inode* inode = (Inode*)_node->private_node;
 
 	if (!inode->IsFile()) {
@@ -639,6 +639,7 @@ static status_t
 btrfs_read_link(fs_volume* _volume, fs_vnode* _node, char* buffer,
 	size_t* _bufferSize)
 {
+	FUNCTION();
 	Inode* inode = (Inode*)_node->private_node;
 
 	if (!inode->IsSymLink())
@@ -1051,17 +1052,6 @@ btrfs_remove_attr(fs_volume* _volume, fs_vnode* vnode,
 	return EROFS;
 }
 
-static uint32
-btrfs_get_supported_operations(partition_data* partition, uint32 mask)
-{
-	// TODO: We should at least check the partition size.
-	return B_DISK_SYSTEM_SUPPORTS_INITIALIZING
-		| B_DISK_SYSTEM_SUPPORTS_CONTENT_NAME
-//		| B_DISK_SYSTEM_SUPPORTS_WRITING
-		;
-}
-
-
 static status_t
 btrfs_initialize(int fd, partition_id partitionID, const char* name,
 	const char* parameterString, off_t partitionSize, disk_job_id job)
@@ -1248,9 +1238,11 @@ static file_system_module_info sBtrfsFileSystem = {
 
 	// DDM flags
 	0
+#if 0
 	| B_DISK_SYSTEM_SUPPORTS_INITIALIZING
 	| B_DISK_SYSTEM_SUPPORTS_CONTENT_NAME
 //	| B_DISK_SYSTEM_SUPPORTS_WRITING
+#endif
 	,
 
 	// scanning
@@ -1261,9 +1253,8 @@ static file_system_module_info sBtrfsFileSystem = {
 
 	&btrfs_mount,
 
-
 	/* capability querying operations */
-	&btrfs_get_supported_operations,
+	NULL,	// get_supported_operations
 
 	NULL,	// validate_resize
 	NULL,	// validate_move

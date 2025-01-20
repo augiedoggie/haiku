@@ -22,6 +22,7 @@
 
 #include <lock.h>
 #include <util/AutoLock.h>
+#include <util/Vector.h>
 
 #include <KernelExport.h>
 
@@ -102,20 +103,16 @@ struct ChainHash {
 	typedef chain_key	KeyType;
 	typedef	chain		ValueType;
 
-// TODO: check if this makes a good hash...
-#define HASH(o) ((uint32)(((o)->family) ^ ((o)->type) ^ ((o)->protocol)))
-
 	size_t HashKey(KeyType key) const
 	{
-		return HASH(&key);
+		// TODO: check if this makes a good hash...
+		return (uint32)(key.family ^ key.type ^ key.protocol);
 	}
 
 	size_t Hash(ValueType* value) const
 	{
-		return HASH(value);
+		return HashKey(chain_key { value->family, value->type, value->protocol });
 	}
-
-#undef HASH
 
 	bool Compare(KeyType key, ValueType* chain) const
 	{
@@ -489,9 +486,13 @@ put_domain_protocols(net_socket* socket)
 		MutexLocker _(sChainLock);
 
 		chain = chain::Lookup(sProtocolChains, socket->family, socket->type,
-			socket->protocol);
-		if (chain == NULL)
+			socket->type == SOCK_RAW ? 0 : socket->protocol);
+		if (chain == NULL) {
+			ASSERT_PRINT(socket->first_protocol == NULL,
+				"socket has first protocol but no chain for %d:%d:%d",
+					socket->family, socket->type, socket->protocol);
 			return B_ERROR;
+		}
 	}
 
 	uninit_domain_protocols(socket);
@@ -743,6 +744,7 @@ scan_modules(const char* path)
 	if (cookie == NULL)
 		return;
 
+	Vector<module_info*> modules;
 	while (true) {
 		char name[B_FILE_NAME_LENGTH];
 		size_t length = sizeof(name);
@@ -751,15 +753,19 @@ scan_modules(const char* path)
 
 		TRACE(("scan %s\n", name));
 
+		// we don't need the module right now, but we give it a chance
+		// to register itself
 		module_info* module;
-		if (get_module(name, &module) == B_OK) {
-			// we don't need the module right now, but we give it a chance
-			// to register itself
-			put_module(name);
-		}
+		if (get_module(name, &module) == B_OK)
+			modules.Add(module);
 	}
 
 	close_module_list(cookie);
+
+	// We don't need the modules right now, so put them all.
+	// (This is done at the end to avoid repeated loading/unloading of dependencies.)
+	for (int32 i = 0; i < modules.Count(); i++)
+		put_module(modules[i]->name);
 }
 
 

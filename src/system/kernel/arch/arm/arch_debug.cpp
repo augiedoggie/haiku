@@ -78,15 +78,9 @@ lookup_symbol(Thread* thread, addr_t address, addr_t* _baseAddress,
 		status = elf_debug_lookup_symbol_address(address, _baseAddress,
 			_symbolName, _imageName, _exactMatch);
 	} else if (thread != NULL && thread->team != NULL) {
-		// try a lookup using the userland runtime loader structures
+		// try to locate the image in the images loaded into user space
 		status = elf_debug_lookup_user_symbol_address(thread->team, address,
 			_baseAddress, _symbolName, _imageName, _exactMatch);
-
-		if (status != B_OK) {
-			// try to locate the image in the images loaded into user space
-			status = image_debug_lookup_user_symbol_address(thread->team,
-				address, _baseAddress, _symbolName, _imageName, _exactMatch);
-		}
 	}
 
 	return status;
@@ -282,7 +276,7 @@ print_demangled_call(const char* image, const char* symbol, addr_t args,
 
 
 static void
-print_stack_frame(Thread *thread, addr_t ip, addr_t fp, addr_t next,
+print_stack_frame(Thread* thread, addr_t ip, addr_t calleeFp, addr_t fp,
 	int32 callIndex, bool demangle)
 {
 	const char* symbol;
@@ -292,10 +286,10 @@ print_stack_frame(Thread *thread, addr_t ip, addr_t fp, addr_t next,
 	status_t status;
 	addr_t diff;
 
-	diff = next - fp;
+	diff = fp - calleeFp;
 
-	// MSB set = kernel space/user space switch
-	if (diff & ~((addr_t)-1 >> 1))
+	// kernel space/user space switch
+	if (calleeFp > fp)
 		diff = 0;
 
 	status = lookup_symbol(thread, ip, &baseAddress, &symbol, &image,
@@ -307,7 +301,7 @@ print_stack_frame(Thread *thread, addr_t ip, addr_t fp, addr_t next,
 	if (status == B_OK) {
 		if (exactMatch && demangle) {
 			status = print_demangled_call(image, symbol,
-				next, false, false);
+				fp, false, false);
 		}
 
 		if (!exactMatch || !demangle || status != B_OK) {

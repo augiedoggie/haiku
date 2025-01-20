@@ -26,13 +26,17 @@ SharedLibrary libuserlandfs_haiku_kernel.so
 	# kernelland_emu
 	condition_variable.cpp
 	debug.cpp
+	heap.cpp
+	KernelReferenceable.cpp
 	lock.cpp
 	low_resource_manager.cpp
 	misc.cpp
+	Random.cpp
 	slab.cpp
 	vm.cpp
 
 	# kernel
+	AVLTreeBase.cpp
 	block_cache.cpp
 	file_map.cpp
 	Notifications.cpp
@@ -47,7 +51,6 @@ SharedLibrary libuserlandfs_haiku_kernel.so
 	HaikuKernelFileSystem.cpp
 	HaikuKernelNode.cpp
 	HaikuKernelVolume.cpp
-
 	:
 	<nogrist>userlandfs_server
 	be	# for BLocker only
@@ -56,13 +59,17 @@ SharedLibrary libuserlandfs_haiku_kernel.so
 
 
 SEARCH on [ FGristFiles
+		block_cache.cpp
+		file_map.cpp
+	] = [ FDirName $(HAIKU_TOP) src system kernel cache ] ;
+
+SEARCH on [ FGristFiles
 		Notifications.cpp
 	] = [ FDirName $(HAIKU_TOP) src system kernel events ] ;
 
 SEARCH on [ FGristFiles
-		block_cache.cpp
-		file_map.cpp
-	] = [ FDirName $(HAIKU_TOP) src system kernel cache ] ;
+		AVLTreeBase.cpp
+	] = [ FDirName $(HAIKU_TOP) src system kernel util ] ;
 
 SEARCH on [ FGristFiles
 		Referenceable.cpp

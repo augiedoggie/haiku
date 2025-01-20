@@ -1,5 +1,6 @@
 /*
  * Copyright 2019-2021, Andrew Lindesay <apl@lindesay.co.nz>.
+ * Copyright 2024 Haiku, Inc. All rights reserved.
  * All rights reserved. Distributed under the terms of the MIT License.
  */
 
@@ -53,10 +54,8 @@
 UserUsageConditionsWindow::UserUsageConditionsWindow(Model& model,
 	UserUsageConditions& userUsageConditions)
 	:
-	BWindow(BRect(), B_TRANSLATE("Usage conditions"),
-			B_FLOATING_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-			B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS
-				| B_NOT_RESIZABLE | B_NOT_ZOOMABLE),
+	BWindow(BRect(), B_TRANSLATE("Usage conditions"), B_FLOATING_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
+		B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS | B_NOT_ZOOMABLE),
 	fMode(FIXED),
 	fModel(model),
 	fIntroductionTextView(NULL),
@@ -94,13 +93,12 @@ UserUsageConditionsWindow::UserUsageConditionsWindow(Model& model,
 	_DisplayData(userDetail, userUsageConditions);
 }
 
-UserUsageConditionsWindow::UserUsageConditionsWindow(
-	Model& model, UserUsageConditionsSelectionMode mode)
+
+UserUsageConditionsWindow::UserUsageConditionsWindow(Model& model,
+	UserUsageConditionsSelectionMode mode)
 	:
-	BWindow(BRect(), B_TRANSLATE("Usage conditions"),
-			B_FLOATING_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-			B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS
-				| B_NOT_RESIZABLE | B_NOT_ZOOMABLE),
+	BWindow(BRect(), B_TRANSLATE("Usage conditions"), B_FLOATING_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
+		B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS | B_NOT_ZOOMABLE),
 	fMode(mode),
 	fModel(model),
 	fWorkerThread(-1)
@@ -163,7 +161,8 @@ UserUsageConditionsWindow::_InitUiControls()
 {
 	fCopyView = new MarkupTextView("copy view");
 	fCopyView->SetViewUIColor(B_NO_COLOR);
-	fCopyView->SetLowColor(RGB_COLOR_WHITE);
+	fCopyView->SetLowUIColor(B_DOCUMENT_BACKGROUND_COLOR);
+	fCopyView->SetHighUIColor(B_DOCUMENT_TEXT_COLOR);
 	fCopyView->SetInsets(8.0f);
 
 	fAgeNoteStringView = new BStringView("age note string view",

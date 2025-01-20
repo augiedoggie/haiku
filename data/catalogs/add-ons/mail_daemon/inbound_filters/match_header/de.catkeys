@@ -1,6 +1,6 @@
 1	german	x-vnd.Haiku-MatchHeader	1946584206
 Delete message	ConfigView		Nachricht löschen
-Match \"%attribute\" against \"%regex\"	RuleFilter		\"%attribute\" mit \"%regex\" vergleichen
+Match \"%attribute\" against \"%regex\"	RuleFilter		„%attribute“ mit „%regex“ vergleichen
 Match header	RuleFilter		Kopfdaten filtern
 Set flags to	ConfigView		Status setzen auf
 Header field (e.g. Subject, From, …)	ConfigView		Kopfdaten Feld (z.B. Betreff, Von, …)

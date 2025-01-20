@@ -1,4 +1,4 @@
-1	french	x-vnd.Haiku-DriveSetup	2150010803
+1	french	x-vnd.Haiku-DriveSetup	1140196651
 Could not unmount partition %s.	MainWindow		Impossible de démonter la partition %s.
 Mount all	MainWindow		Monter tout
 Disk	MainWindow		Disque
@@ -27,7 +27,6 @@ Write changes	MainWindow		Écrire les modifications
 Initialization of the partition %s failed. (Nothing has been written to disk.)	MainWindow		L’initialisation de la partition %s a échoué. (Aucune modification n’a été apportée au disque.)
 Validation of the given creation parameters failed.	MainWindow		Le contrôle des paramètres de création donnés a échoué.
 Eject	MainWindow		Éjecter
-Are you sure you want to write the changes back to disk now?\n\nAll data on the disk %s will be irretrievably lost if you do so!	MainWindow		Êtes-vous sûr de vouloir écrire les modifications sur disque maintenant ?\n\nToutes les données du disque %s seront irrémédiablement perdues si vous le faites !
 Surface test (not implemented)	MainWindow		Test de surface (non implémenté)
 Read only	PartitionList		Lecture seule
 The panel could not return successfully.	MainWindow		Résultat infructueux de la fenêtre.
@@ -42,6 +41,7 @@ Format	InitializeParametersPanel		Format
 Could not unmount partition	MainWindow		Impossible de démonter la partition
 Create	CreateParametersPanel		Créer
 File system	PartitionList		Système de fichiers
+Unknown (%s)	PartitionList		Inconnu (%s)
 The selected partition does not contain a partitioning system.	MainWindow		La partition sélectionnée ne contient pas de système de partitionnement.
 End: %s	Support		Fin : %s
 Partition type	PartitionList		Type de partition
@@ -51,7 +51,6 @@ Are you sure you want to format a raw disk? (Most people initialize the disk wit
 Wipe (not implemented)	MainWindow		Effacer (non implémenté)
 The currently selected partition does not have a parent partition.	MainWindow		La partition sélectionnée n’a pas de partition parente.
 Validation of the given initialization parameters failed.	MainWindow		Le contrôle des paramètres d’initialisation donnés a échoué.
-Not formatted (%s)	PartitionList		Non formaté (%s)
 Failed to create the partition. No changes have been written to disk.	MainWindow		La création de la partition a échoué. Aucune modification n’a été écrite sur le disque.
 Shared	PartitionList		Partagé
 MIMEs	PartitionList		MIMEs
@@ -64,7 +63,6 @@ Are you sure you want to write the changes back to disk now?\n\nAll data on the 
 Change	ChangeParametersPanel		Modifier
 Partition name:	ChangeParametersPanel		Label de partition :
 LUKS encrypted	Encryption utils		Chiffré avec LUKS
-Are you sure you want to write the changes back to disk now?\n\nAll data on the partition %s will be irretrievably lost if you do so!	MainWindow		Êtes-vous sûr de vouloir enregistrer les modifications sur le disque maintenant ?\n\nToutes les données sur la partition %s seront irrémédiablement perdues si vous le faites !
 Empty space	PartitionList		Espace libre
 Cancel	AbstractParametersPanel		Annuler
 Format	MainWindow		Formater
@@ -85,7 +83,6 @@ Change parameters	MainWindow		Modifier les paramètres
 Rescan	MainWindow		Analyser
 There was an error acquiring the partition row.	MainWindow		Erreur de lecture des informations de la partition.
 Failed to initialize the disk %s!\n	MainWindow		Impossible d’initialiser le disque %s !\n
-Disk system \"%s\" not found!	MainWindow		Le disque système « %s » est introuvable !
 The partition cannot be unmounted.	MainWindow		La partition ne peut pas être démontée.
 Delete	MainWindow		Supprimer
 Partition type:	ChangeParametersPanel		Type de la partition :

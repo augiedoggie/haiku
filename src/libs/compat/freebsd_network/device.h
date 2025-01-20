@@ -17,8 +17,6 @@
 
 #include <util/list.h>
 
-#include <net_stack.h>
-
 #include <compat/sys/kernel.h>
 #include <compat/net/if.h>
 
@@ -52,9 +50,8 @@ enum {
 };
 
 
-extern struct net_stack_module_info *gStack;
+extern struct net_buffer_module_info *gBufferModule;
 extern pci_module_info *gPci;
-extern struct pci_x86_module_info *gPCIx86;
 
 
 static inline void
@@ -93,6 +90,8 @@ status_t get_usb_device_attach_arg(struct freebsd_usb_device* device, struct usb
 
 device_t find_root_device(int);
 pci_info* get_device_pci_info(device_t dev);
+
+device_method_signature_t resolve_device_method(driver_t *driver, int id);
 
 void driver_printf(const char *format, ...)
 	__attribute__ ((format (__printf__, 1, 2)));

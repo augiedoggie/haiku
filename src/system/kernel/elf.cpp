@@ -301,22 +301,6 @@ delete_elf_image(struct elf_image_info *image)
 }
 
 
-static uint32
-elf_hash(const char *name)
-{
-	uint32 hash = 0;
-	uint32 temp;
-
-	while (*name) {
-		hash = (hash << 4) + (uint8)*name++;
-		if ((temp = hash & 0xf0000000) != 0)
-			hash ^= temp >> 24;
-		hash &= ~temp;
-	}
-	return hash;
-}
-
-
 static const char *
 get_symbol_type_string(elf_sym *symbol)
 {
@@ -378,7 +362,8 @@ dump_symbol(int argc, char **argv)
 				if (symbol->st_value > 0 && strstr(name, pattern) != 0) {
 					symbolAddress
 						= (void*)(symbol->st_value + image->text_region.delta);
-					kprintf("%p %5lu %s:%s\n", symbolAddress, symbol->st_size,
+					kprintf("%p %5lu %s:%s\n", symbolAddress,
+						(long unsigned int)(symbol->st_size),
 						image->name, name);
 				}
 			}
@@ -394,7 +379,8 @@ dump_symbol(int argc, char **argv)
 						symbolAddress = (void*)(symbol->st_value
 							+ image->text_region.delta);
 						kprintf("%p %5lu %s:%s\n", symbolAddress,
-							symbol->st_size, image->name, name);
+							(long unsigned int)(symbol->st_size),
+							image->name, name);
 					}
 				}
 			}
@@ -483,7 +469,8 @@ dump_symbols(int argc, char **argv)
 			kprintf("%0*lx %s/%s %5ld %s\n", B_PRINTF_POINTER_WIDTH,
 				symbol->st_value + image->text_region.delta,
 				get_symbol_type_string(symbol), get_symbol_bind_string(symbol),
-				symbol->st_size, image->debug_string_table + symbol->st_name);
+				(long unsigned int)(symbol->st_size),
+				image->debug_string_table + symbol->st_name);
 		}
 	} else {
 		int32 j;
@@ -502,7 +489,8 @@ dump_symbols(int argc, char **argv)
 					symbol->st_value + image->text_region.delta,
 					get_symbol_type_string(symbol),
 					get_symbol_bind_string(symbol),
-					symbol->st_size, SYMNAME(image, symbol));
+					(long unsigned int)(symbol->st_size),
+					SYMNAME(image, symbol));
 			}
 		}
 	}
@@ -600,6 +588,20 @@ void dump_symbol(struct elf_image_info *image, elf_sym *sym)
 
 
 #endif // ELF32_COMPAT
+
+
+static uint32
+elf_hash(const char* _name)
+{
+	const uint8* name = (const uint8*)_name;
+
+	uint32 h = 0;
+	while (*name != '\0') {
+		h = (h << 4) + *name++;
+		h ^= (h >> 24) & 0xf0;
+	}
+	return (h & 0x0fffffff);
+}
 
 
 static elf_sym *
@@ -1355,22 +1357,6 @@ public:
 
 	status_t Init(Team* team)
 	{
-		// find the runtime loader debug area
-		VMArea* area;
-		for (VMAddressSpace::AreaIterator it
-					= team->address_space->GetAreaIterator();
-				(area = it.Next()) != NULL;) {
-			if (strcmp(area->name, RUNTIME_LOADER_DEBUG_AREA_NAME) == 0)
-				break;
-		}
-
-		if (area == NULL)
-			return B_ERROR;
-
-		// copy the runtime loader data structure
-		if (!_Read((runtime_loader_debug_area*)area->Base(), fDebugArea))
-			return B_BAD_ADDRESS;
-
 		fTeam = team;
 		return B_OK;
 	}
@@ -1388,7 +1374,7 @@ public:
 		// from the shared object.
 
 		// get the image for the address
-		image_t image;
+		struct image *image;
 		status_t error = _FindImageAtAddress(address, image);
 		if (error != B_OK) {
 			// commpage requires special treatment since kernel stores symbol
@@ -1407,18 +1393,22 @@ public:
 			return error;
 		}
 
-		strlcpy(fImageName, image.name, sizeof(fImageName));
+		const extended_image_info& info = image->info;
+		const uint32 *symhash = (uint32 *)info.symbol_hash;
+		elf_sym *syms = (elf_sym *)info.symbol_table;
+
+		strlcpy(fImageName, info.basic_info.name, sizeof(fImageName));
 
 		// symbol hash table size
 		uint32 hashTabSize;
-		if (!_Read(image.symhash, hashTabSize))
+		if (!_Read(symhash, hashTabSize))
 			return B_BAD_ADDRESS;
 
 		// remote pointers to hash buckets and chains
-		const uint32* hashBuckets = image.symhash + 2;
-		const uint32* hashChains = image.symhash + 2 + hashTabSize;
+		const uint32* hashBuckets = symhash + 2;
+		const uint32* hashChains = symhash + 2 + hashTabSize;
 
-		const elf_region_t& textRegion = image.regions[0];
+		const addr_t loadDelta = (addr_t)info.basic_info.text;
 
 		// search the image for the symbol
 		elf_sym symbolFound;
@@ -1438,7 +1428,7 @@ public:
 					_Read(&hashChains[j], j) ? 0 : j = STN_UNDEF) {
 
 				elf_sym symbol;
-				if (!_Read(image.syms + j, symbol))
+				if (!_Read(syms + j, symbol))
 					continue;
 
 				// The symbol table contains not only symbols referring to
@@ -1450,13 +1440,12 @@ public:
 				// -- couldn't verify that in the specs though).
 				if ((symbol.Type() != STT_FUNC && symbol.Type() != STT_OBJECT)
 					|| symbol.st_value == 0
-					|| symbol.st_value + symbol.st_size + textRegion.delta
-						> textRegion.vmstart + textRegion.size) {
+					|| (symbol.st_value + symbol.st_size) > (elf_addr)info.basic_info.text_size) {
 					continue;
 				}
 
 				// skip symbols starting after the given address
-				addr_t symbolAddress = symbol.st_value + textRegion.delta;
+				addr_t symbolAddress = symbol.st_value + loadDelta;
 				if (symbolAddress > address)
 					continue;
 				addr_t symbolDelta = address - symbolAddress;
@@ -1481,7 +1470,7 @@ public:
 			*_symbolName = NULL;
 
 			if (deltaFound < INT_MAX) {
-				if (_ReadString(image, symbolFound.st_name, fSymbolName,
+				if (_ReadString(info, symbolFound.st_name, fSymbolName,
 						sizeof(fSymbolName))) {
 					*_symbolName = fSymbolName;
 				} else {
@@ -1493,9 +1482,9 @@ public:
 
 		if (_baseAddress) {
 			if (deltaFound < INT_MAX)
-				*_baseAddress = symbolFound.st_value + textRegion.delta;
+				*_baseAddress = symbolFound.st_value + loadDelta;
 			else
-				*_baseAddress = textRegion.vmstart;
+				*_baseAddress = loadDelta;
 		}
 
 		if (_exactMatch)
@@ -1504,32 +1493,30 @@ public:
 		return B_OK;
 	}
 
-	status_t _FindImageAtAddress(addr_t address, image_t& image)
+	status_t _FindImageAtAddress(addr_t address, struct image*& _image)
 	{
-		image_queue_t imageQueue;
-		if (!_Read(fDebugArea.loaded_images, imageQueue))
-			return B_BAD_ADDRESS;
+		for (struct image* image = fTeam->image_list.First();
+				image != NULL; image = fTeam->image_list.GetNext(image)) {
+			image_info *info = &image->info.basic_info;
 
-		image_t* imageAddress = imageQueue.head;
-		while (imageAddress != NULL) {
-			if (!_Read(imageAddress, image))
-				return B_BAD_ADDRESS;
+			if ((address < (addr_t)info->text
+					|| address >= (addr_t)info->text + info->text_size)
+				&& (address < (addr_t)info->data
+					|| address >= (addr_t)info->data + info->data_size))
+				continue;
 
-			if (image.regions[0].vmstart <= address
-				&& address < image.regions[0].vmstart + image.regions[0].size) {
-				return B_OK;
-			}
-
-			imageAddress = image.next;
+			// found image
+			_image = image;
+			return B_OK;
 		}
 
 		return B_ENTRY_NOT_FOUND;
 	}
 
-	bool _ReadString(const image_t& image, uint32 offset, char* buffer,
+	bool _ReadString(const extended_image_info& info, uint32 offset, char* buffer,
 		size_t bufferSize)
 	{
-		const char* address = image.strtab + offset;
+		const char* address = (char *)info.string_table + offset;
 
 		if (!IS_USER_ADDRESS(address))
 			return false;
@@ -1546,7 +1533,6 @@ public:
 
 private:
 	Team*						fTeam;
-	runtime_loader_debug_area	fDebugArea;
 	char						fImageName[B_OS_NAME_LENGTH];
 	char						fSymbolName[256];
 	static UserSymbolLookup		sLookup;
@@ -1968,8 +1954,9 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 
 			id = vm_map_file(team->id, regionName, (void **)&regionAddress,
 				addressSpec, fileUpperBound,
-				B_READ_AREA | B_WRITE_AREA, REGION_PRIVATE_MAP, false,
-				fd, ROUNDDOWN(programHeaders[i].p_offset, B_PAGE_SIZE));
+				B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA,
+				REGION_PRIVATE_MAP, false, fd,
+				ROUNDDOWN(programHeaders[i].p_offset, B_PAGE_SIZE));
 			if (id < B_OK) {
 				dprintf("error mapping file data: %s!\n", strerror(id));
 				return B_NOT_AN_EXECUTABLE;
@@ -1990,9 +1977,7 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 			size_t amount = fileUpperBound
 				- (programHeaders[i].p_vaddr % B_PAGE_SIZE)
 				- (programHeaders[i].p_filesz);
-			set_ac();
 			memset((void *)start, 0, amount);
-			clear_ac();
 
 			// Check if we need extra storage for the bss - we have to do this if
 			// the above region doesn't already comprise the memory size, too.
@@ -2008,7 +1993,7 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 				virtualRestrictions.address_specification = B_EXACT_ADDRESS;
 				physical_address_restrictions physicalRestrictions = {};
 				id = create_area_etc(team->id, regionName, bssSize, B_NO_LOCK,
-					B_READ_AREA | B_WRITE_AREA, 0, 0, &virtualRestrictions,
+					B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA, 0, 0, &virtualRestrictions,
 					&physicalRestrictions, (void**)&regionAddress);
 				if (id < B_OK) {
 					dprintf("error allocating bss area: %s!\n", strerror(id));
@@ -2017,14 +2002,15 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 			}
 		} else {
 			// assume ro/text segment
-			snprintf(regionName, B_OS_NAME_LENGTH, "%s_seg%dro", baseName, i);
+			snprintf(regionName, B_OS_NAME_LENGTH, "%s_seg%drx", baseName, i);
 
 			size_t segmentSize = ROUNDUP(programHeaders[i].p_memsz
 				+ (programHeaders[i].p_vaddr % B_PAGE_SIZE), B_PAGE_SIZE);
 
 			id = vm_map_file(team->id, regionName, (void **)&regionAddress,
 				addressSpec, segmentSize,
-				B_READ_AREA | B_WRITE_AREA, REGION_PRIVATE_MAP, false, fd,
+				B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA,
+				REGION_PRIVATE_MAP, false, fd,
 				ROUNDDOWN(programHeaders[i].p_offset, B_PAGE_SIZE));
 			if (id < B_OK) {
 				dprintf("error mapping file text: %s!\n", strerror(id));
@@ -2052,20 +2038,13 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 	// modify the dynamic ptr by the delta of the regions
 	image->dynamic_section += image->text_region.delta;
 
-	set_ac();
 	status = elf_parse_dynamic_section(image);
-	if (status != B_OK) {
-		clear_ac();
+	if (status != B_OK)
 		return status;
-	}
 
 	status = elf_relocate(image, image);
-	if (status != B_OK) {
-		clear_ac();
+	if (status != B_OK)
 		return status;
-	}
-
-	clear_ac();
 
 	// set correct area protection
 	for (int i = 0; i < elfHeader.e_phnum; i++) {
@@ -2073,7 +2052,6 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 			continue;
 
 		uint32 protection = 0;
-
 		if (programHeaders[i].p_flags & PF_EXECUTE)
 			protection |= B_EXECUTE_AREA;
 		if (programHeaders[i].p_flags & PF_WRITE)

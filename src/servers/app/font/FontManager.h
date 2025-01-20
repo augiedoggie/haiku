@@ -62,11 +62,14 @@ public:
 				// This call must not be used by anything else than class
 				// FontStyle.
 
+	virtual	uint32				Revision();
+
 
 protected:
 			FT_CharMap			_GetSupportedCharmap(const FT_Face& face);
 
 			FontFamily*			_FindFamily(const char* family) const;
+			FontFamily*			_FindFamily(uint16 familyID) const;
 
 			status_t			_AddFont(FT_Face face, node_ref nodeRef,
 									const char* path,
@@ -78,6 +81,9 @@ protected:
 
 private:
 			struct FontKey {
+				FontKey()
+					: familyID(0xffff), styleID(0xffff) {}
+
 				FontKey(uint16 family, uint16 style)
 					: familyID(family), styleID(style) {}
 
@@ -100,7 +106,9 @@ private:
 			FamilyList			fFamilies;
 
 			HashMap<FontKey, BReference<FontStyle> > fStyleHashTable;
+			HashMap<FontKey, FontStyle*> fDelistedStyleHashTable;
 
+			uint32				fRevision;
 			uint16				fNextID;
 };
 

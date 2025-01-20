@@ -220,14 +220,13 @@ struct Team : TeamThreadIteratorEntry<team_id>, KernelReferenceable,
 		AssociatedDataOwner {
 	DoublyLinkedListLink<Team>	global_list_link;
 	Team			*hash_next;		// next in hash
-	Team			*siblings_next;	// next in parent's list; protected by
-									// parent's fLock
+	DoublyLinkedListLink<Team> siblings_link; // protected by parent's fLock
 	Team			*parent;		// write-protected by both parent (if any)
 									// and this team's fLock
-	Team			*children;		// protected by this team's fLock;
-									// adding/removing a child also requires the
-									// child's fLock
-	Team			*group_next;	// protected by the group's lock
+	DoublyLinkedList<Team, DoublyLinkedListMemberGetLink<Team, &Team::siblings_link> > children;
+		// protected by this team's fLock;
+		// adding/removing a child also requires the child's fLock
+	DoublyLinkedListLink<Team> group_link; // protected by the group's lock
 
 	int64			serial_number;	// immutable after adding team to hash
 
@@ -261,7 +260,7 @@ struct Team : TeamThreadIteratorEntry<team_id>, KernelReferenceable,
 	Thread			*thread_list;	// protected by fLock, signal_lock and
 									// gThreadCreationLock
 	struct team_loading_info *loading_info;	// protected by fLock
-	struct list		image_list;		// protected by sImageMutex
+	DoublyLinkedList<image> image_list; // protected by sImageMutex
 	struct list		watcher_list;
 	struct list		sem_list;		// protected by sSemsSpinlock
 	struct list		port_list;		// protected by sPortsLock
@@ -449,6 +448,7 @@ struct Thread : TeamThreadIteratorEntry<thread_id>, KernelReferenceable {
 	int32			state;			// protected by scheduler lock
 	struct cpu_ent	*cpu;			// protected by scheduler lock
 	struct cpu_ent	*previous_cpu;	// protected by scheduler lock
+	CPUSet			cpumask;
 	int32			pinned_to_cpu;	// only accessed by this thread or in the
 									// scheduler, when thread is not running
 	spinlock		scheduler_lock;
@@ -666,9 +666,14 @@ private:
 
 
 struct ProcessGroup : KernelReferenceable {
-	struct ProcessGroup *next;		// next in hash
+	typedef DoublyLinkedList<Team,
+		DoublyLinkedListMemberGetLink<Team,
+			&Team::group_link> > TeamList;
+
+public:
+	struct ProcessGroup *hash_next;
 	pid_t				id;
-	BKernel::Team		*teams;
+	TeamList			teams;
 
 public:
 								ProcessGroup(pid_t id);

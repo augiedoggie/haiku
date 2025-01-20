@@ -25,6 +25,7 @@
 #define VIRTIO_DEVICE_ID_INPUT		18
 #define VIRTIO_DEVICE_ID_VSOCK		19
 #define VIRTIO_DEVICE_ID_CRYPTO		20
+#define VIRTIO_DEVICE_ID_SOUND		25
 
 #define VIRTIO_FEATURE_TRANSPORT_MASK	((1ULL << 28) - 1)
 
@@ -116,7 +117,7 @@ typedef struct {
 		const void* buffer, size_t bufferSize);
 
 	status_t (*alloc_queues)(virtio_device cookie, size_t count,
-		virtio_queue* queues);
+		virtio_queue* queues, uint16* requestedSizes);
 
 	void (*free_queues)(virtio_device cookie);
 

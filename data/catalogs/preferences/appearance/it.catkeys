@@ -1,4 +1,4 @@
-1	italian	x-vnd.Haiku-Appearance	663472720
+1	italian	x-vnd.Haiku-Appearance	211365410
 Control border	Colors tab		Bordi del controllo
 Control mark	Colors tab		Marcatore del controllo
 Off	AntialiasingSettingsView		Disattivato
@@ -36,13 +36,14 @@ Menu font:	Font view		Tipo di carattere del menu:
 Bold font:	Font view		Tipo di carattere in grassetto:
 %decorName\n\nAuthors:\n\t%decorAuthors\n\nURL: %decorURL\nLicense: %decorLic\n\n%decorDesc\n	DecorSettingsView		%decorName\n\nAutori:\n\t%decorAuthors\n\nURL: %decorURL\nLicenza: %decorLic\n\n%decorDesc\n
 Choose Decorator	DecorSettingsView		Scegli il decoratore
-Strong	AntialiasingSettingsView		Forte
 Failure	Colors tab		Insuccesso
+Strong	AntialiasingSettingsView		Forte
 Double:	DecorSettingsView		Doppio:
 Selected menu item text	Colors tab		Testo della voce selezionata nel menu
 Size:	Font Selection view		Dimensione:
 Panel background	Colors tab		Sfondo del pannello
 Plain font:	Font view		Tipo di carattere base:
+Automatically pick secondary colors	Colors tab		Seleziona automaticamente i colori secondari
 Window tab text	Colors tab		Testo della linguetta sulla finestra
 Navigation pulse	Colors tab		Navigation pulse
 LCD subpixel	AntialiasingSettingsView		Componenti LCD

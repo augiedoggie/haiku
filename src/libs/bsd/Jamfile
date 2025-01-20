@@ -1,6 +1,6 @@
 SubDir HAIKU_TOP src libs bsd ;
 
-UsePrivateHeaders system ;
+UsePrivateHeaders libroot shared system ;
 UsePrivateHeaders [ FDirName system arch $(TARGET_ARCH) ] ;
 UseHeaders [ FDirName $(HAIKU_TOP) headers compatibility bsd ] : true ;
 
@@ -19,7 +19,6 @@ for architectureObject in [ MultiArchSubDirSetup ] {
 			explicit_bzero.c
 			fgetln.c
 			fts.c
-			getentropy.c
 			getpass.c
 			issetugid.c
 			kqueue.cpp

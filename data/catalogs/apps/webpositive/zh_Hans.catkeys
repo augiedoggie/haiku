@@ -1,27 +1,29 @@
-1	english	x-vnd.Haiku-WebPositive	2894241046
+1	english	x-vnd.Haiku-WebPositive	2942427387
 Authentication required	Authentication Panel		需要认证
 Previous	WebPositive Window		上一个
+Copy	Console Window		复制
 (Finish: %date)	Download Window		(完成: %date)
 Open bookmarks confirmation	WebPositive Window		确认打开书签
 Download folder:	Settings Window		下载文件夹：
 Close window	WebPositive Window		关闭窗口
 Find:	WebPositive Window		查找：
 Script console	WebPositive Window		脚本控制台
+There was an error setting up the bookmark.	WebPositive Window		设置书签时出错。
 Fonts	Settings Window		字体
 Path	Cookie Manager		路径
 Bookmarks	WebPositive Window		书签
 Use proxy server to connect to the internet	Settings Window		使用代理服务器连接互联网
 %url finished	WebPositive Window	Loading URL finished. Don't translate variable %url.	%url 已完成
 Auto-hide interface in full screen mode	Settings Window		在全屏模式下自动隐藏界面
-There was an error retrieving the bookmark folder.\n\nError: %error	WebPositive Window	Don't translate the variable %error	获取书签文件夹时发生错误。\n\n错误：%error
 Delete	Cookie Manager		删除
+There was an error retrieving the bookmark folder.\n\nError: %error	WebPositive Window	Don't translate the variable %error	获取书签文件夹时发生错误。\n\n错误：%error
 (Finish: %date - Over %duration left)	Download Window		（完成时间：%date - 还需大于%duration）
 Open containing folder	Download Window		打开所在文件夹
 Find previous	WebPositive Window		查找上一个
 Full screen	WebPositive Window		全屏
 Downloads in progress	WebPositive		正在下载
 Copy URL to clipboard	Download Window		复制 URL 到剪切板
-Do you want to open %addedCount bookmarks all at once?	WebPositive Window	Don't translate variable %addedCount.	你想同时打开 %addedCount 个书签吗？
+Do you want to open %addedCount bookmarks all at once?	WebPositive Window	Don't translate variable %addedCount.	您想同时打开 %addedCount 个书签吗？
 Clone current page	Settings Window		克隆当前页面
 Start page:	Settings Window		启动页面：
 Cancel	Download Window		取消
@@ -54,14 +56,14 @@ Cookies for %s	Cookie Manager		%s 的 Cookie
 Close	Download Window		关闭
 WebPositive	System name		WebPositive
 %s - Search term	Settings Window		%s - 搜索术语
-Reload	WebPositive Window		刷新
 Expiration	Cookie Manager		有效期
+Reload	WebPositive Window		刷新
 Your CPU is too old and does not support the SSE2 extensions, without which WebPositive cannot run. We recommend installing NetSurf instead.	WebPositive		您的 CPU 太旧，不支持 SSE2 扩展，没有这些扩展，WebPositive 无法运行。我们建议改为安装 NetSurf。
 Download finished	Download Window		下载完成
 Cookie manager	WebPositive Window		Cookie管理器
-OK	Authentication Panel		确定
-Hide password text	Authentication Panel		隐藏密码文本
 Username:	Authentication Panel		用户名:
+Hide password text	Authentication Panel		隐藏密码文本
+OK	Authentication Panel		确定
 Name	Cookie Manager		名称
 Remove finished	Download Window		移除已完成
 Earlier	WebPositive Window		更早
@@ -79,8 +81,8 @@ View	WebPositive Window		视图
 Paste	URL Bar		粘贴
 Find next	WebPositive Window		查找下一个
 Open search page	Settings Window		打开搜索页面
-Increase size	WebPositive Window		增加大小
 New tab	WebPositive Window		新建标签
+Increase size	WebPositive Window		增加大小
 Today	WebPositive Window		今天
 Open location	WebPositive Window		打开位置
 New browser window	Download Window		新建浏览窗口
@@ -96,36 +98,68 @@ Proxy username:	Settings Window		代理用户名：
 Manage bookmarks	WebPositive Window		管理书签
 /s)	Download Window	...as in 'per second'	/秒)
 Restart	Download Window		重新启动
-Serif font:	Settings Window		线称字体：
+Serif font:	Settings Window		衬线字体：
 Apply	Settings Window		应用
 There was an error trying to show the Bookmarks folder.\n\nError: %error	WebPositive Window	Don't translate variable %error	尝试显示书签目录发生错误。\n\n错误：%error
 Revert	Settings Window		恢复
 Copy	WebPositive Window		复制
+{0, plural,one{Last line repeated # time.}other{Last line repeated # times.}}	Console Window		{0, plural,one{最后一行重复了 # 次。}other{最后一行重复了 # 次。}}
 Default standard font size:	Settings Window		默认标准字体大小：
 Custom	Settings Window		自定义
 Bookmark this page	WebPositive Window		添加页面到书签
 Show tabs if only one page is open	Settings Window		只打开一个页面时仍显示选项卡
-Close tab	WebPositive Window		关闭标签页
 Remove	Download Window		移除
+Close tab	WebPositive Window		关闭标签页
 About	WebPositive Window		关于
-There are still downloads in progress, do you really want to quit WebPositive now?	WebPositive		仍有文件下载中，是否现在退出WebPositive?
 Continue downloads	WebPositive		继续下载
+There are still downloads in progress, do you really want to quit WebPositive now?	WebPositive		仍有文件下载中，是否现在退出WebPositive?
 Proxy server requires authentication	Settings Window		代理服务器需要认证
 Cancel	Settings Window		取消
 Reset size	WebPositive Window		重置大小
 History	WebPositive Window		历史
+Do you really want to clear the browsing history?	WebPositive Window		确定要清理浏览历史记录吗？
+Find next occurrence of search terms	WebPositive Window	find bar next button tooltip	查找下一个出现的搜索词
 Fixed font:	Settings Window		固定字体：
 Quit	WebPositive Window		退出
+Find previous occurrence of search terms	WebPositive Window	find bar previous button tooltip	查找上一个出现的搜索词
 Remember username and password for this site	Authentication Panel		记住这个网站的用户名和密码
+(Finish: %date - %duration left)	Download Window		(完成还需: %date - %duration)
+Cookie manager	Cookie Manager		Cookie 管理器
+Show home button	Settings Window		显示主页按钮
+Start new session	Settings Window		启动新会话
 The cookie jar is empty!	Cookie Manager		Cookie列表是空的!
+Value	Cookie Manager		值
+Remove missing	Download Window		删除所缺失的文件
 Paste	WebPositive Window		粘贴
 Double-click or middle-click to open new tab.	Tab Manager		双击或者中键点击打开新标签页。
 Next	WebPositive Window		下一个
 Bookmark error	WebPositive Window		书签错误
 OK	WebPositive Window		确定
-Zoom text only	WebPositive Window		仅缩放文本
+(%currentSize% of %expectedSize%, %rate%/s)	Download Window		(%currentSize% of %expectedSize%, %rate%/s)
+WebPositive	Download Window		WebPositive
 Save page as…	WebPositive Window		页面保存为…
+Zoom text only	WebPositive Window		仅缩放文本
+Page source error	WebPositive Window		网页源代码错误
+Auto-hide mouse pointer	Settings Window		自动隐藏鼠标指针
+Requesting %url	WebPositive Window		正在请求 %url
+Flags	Cookie Manager		标志
+Window	WebPositive Window		窗口
+Proxy server address:	Settings Window		代理服务器地址:
+Search page:	Settings Window		搜索页:
+Settings	WebPositive Window		设置
+Clear	URL Bar		清除
+Loading %url	WebPositive Window		正在加载 %url
+The quick brown fox jumps over the lazy dog.	Font Selection view	Don't translate this literally ! Use a phrase showing all chars from A to Z.	敏捷的棕色狐狸跳过了懒狗。
+Start up:	Settings Window		起始页：
 Confirmation	WebPositive Window		确认
+Session cookie	Cookie Manager		会话 cookie
+No SSE2 support	WebPositive		不支持 SSE2
+Open all	WebPositive Window		全部打开
+Cut	WebPositive Window		剪切
 Downloads	Download Window		下载
+Open blank page	Settings Window		打开空白页
 Clear history	WebPositive Window		清空历史记录
 Cancel	WebPositive Window		取消
+Script console	Console Window		脚本控制台
+Copy	URL Bar		复制
+Open start page	Settings Window		打开起始页

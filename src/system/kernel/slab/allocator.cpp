@@ -23,18 +23,24 @@
 #include "MemoryManager.h"
 
 
+#if USE_SLAB_ALLOCATOR_FOR_MALLOC
+
+
 //#define TEST_ALL_CACHES_DURING_BOOT
 
 static const size_t kBlockSizes[] = {
-	16, 24, 32, 48, 64, 80, 96, 112,
-	128, 160, 192, 224, 256, 320, 384, 448,
-	512, 640, 768, 896, 1024, 1280, 1536, 1792,
-	2048, 2560, 3072, 3584, 4096, 4608, 5120, 5632,
-	6144, 6656, 7168, 7680, 8192,
-	0
+	16, 24, 32,
+	48, 64, 80, 96, 112, 128,
+	160, 192, 224, 256,
+	320, 384, 448, 512,
+	640, 768, 896, 1024,
+	1280, 1536, 1792, 2048,
+	2560, 3072, 3584, 4096,
+	5120, 6144, 7168, 8192,
+	10240, 12288, 14336, 16384,
 };
 
-static const size_t kNumBlockSizes = sizeof(kBlockSizes) / sizeof(size_t) - 1;
+static const size_t kNumBlockSizes = B_COUNT_OF(kBlockSizes);
 
 static object_cache* sBlockCaches[kNumBlockSizes];
 
@@ -63,8 +69,12 @@ size_to_index(size_t size)
 		return 17 + (size - 512 - 1) / 128;
 	if (size <= 2048)
 		return 21 + (size - 1024 - 1) / 256;
-	if (size <= 8192)
+	if (size <= 4096)
 		return 25 + (size - 2048 - 1) / 512;
+	if (size <= 8192)
+		return 29 + (size - 4096 - 1) / 1024;
+	if (size <= 16384)
+		return 33 + (size - 8192 - 1) / 2048;
 
 	return -1;
 }
@@ -85,7 +95,7 @@ block_alloc(size_t size, size_t alignment, uint32 flags)
 
 		// If we're not using an object cache, make sure that the memory
 		// manager knows it has to align the allocation.
-		if (size > kBlockSizes[kNumBlockSizes])
+		if (size > kBlockSizes[kNumBlockSizes - 1])
 			flags |= CACHE_ALIGN_ON_SIZE;
 	}
 
@@ -163,7 +173,7 @@ block_free(void* block, uint32 flags)
 void
 block_allocator_init_boot()
 {
-	for (int index = 0; kBlockSizes[index] != 0; index++) {
+	for (size_t index = 0; index < kNumBlockSizes; index++) {
 		char name[32];
 		snprintf(name, sizeof(name), "block allocator: %lu",
 			kBlockSizes[index]);
@@ -200,9 +210,6 @@ block_allocator_init_rest()
 
 
 // #pragma mark - public API
-
-
-#if USE_SLAB_ALLOCATOR_FOR_MALLOC
 
 
 void*
@@ -292,6 +299,29 @@ void*
 realloc(void* address, size_t newSize)
 {
 	return realloc_etc(address, newSize, 0);
+}
+
+
+#else
+
+
+void*
+block_alloc_early(size_t size)
+{
+	panic("block allocator not enabled!");
+	return NULL;
+}
+
+
+void
+block_allocator_init_boot()
+{
+}
+
+
+void
+block_allocator_init_rest()
+{
 }
 
 

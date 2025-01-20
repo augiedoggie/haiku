@@ -97,17 +97,15 @@ CharacterView::IsShowingBlock(int32 blockIndex) const
 	if (!fShowPrivateBlocks && kUnicodeBlocks[blockIndex].private_block)
 		return false;
 
-	// the reason for two checks is BeOS compatibility.
-	// The Includes method checks for unicode blocks as
-	// defined by Be, but there are only 71 such blocks.
+	// The reason for two checks is BeOS compatibility.
+	// The first one checks for unicode blocks as defined by Be,
+	// but there are only 71 such blocks.
 	// The rest of the blocks (denoted by kNoBlock) need to
 	// be queried by searching for the start and end codepoints
 	// via the IncludesBlock method.
 	if (fShowContainedBlocksOnly) {
-		if (kUnicodeBlocks[blockIndex].block != kNoBlock
-			&& !fUnicodeBlocks.Includes(
-				kUnicodeBlocks[blockIndex].block))
-			return false;
+		if (kUnicodeBlocks[blockIndex].block != kNoBlock)
+			return (fUnicodeBlocks & kUnicodeBlocks[blockIndex].block) != kNoBlock;
 
 		if (!fCharacterFont.IncludesBlock(
 				kUnicodeBlocks[blockIndex].start,
@@ -202,6 +200,11 @@ CharacterView::UnicodeToUTF8(uint32 c, char* text, size_t textSize)
 /*static*/ void
 CharacterView::UnicodeToUTF8Hex(uint32 c, char* text, size_t textSize)
 {
+	if (c == 0) {
+		snprintf(text, textSize, "\\x00");
+		return;
+	}
+
 	char character[16];
 	CharacterView::UnicodeToUTF8(c, character, sizeof(character));
 
@@ -228,7 +231,7 @@ CharacterView::MessageReceived(BMessage* message)
 				character = fCurrentCharacter;
 			}
 
-			char text[16];
+			char text[17];
 			if (message->what == kMsgCopyAsEscapedString)
 				UnicodeToUTF8Hex(character, text, sizeof(text));
 			else
@@ -250,7 +253,7 @@ CharacterView::AttachedToWindow()
 {
 	Window()->AddShortcut('C', B_SHIFT_KEY,
 		new BMessage(kMsgCopyAsEscapedString), this);
-	SetViewColor(255, 255, 255, 255);
+	SetViewUIColor(B_LIST_BACKGROUND_COLOR);
 	SetLowColor(ViewColor());
 }
 
@@ -310,7 +313,13 @@ class PreviewItem: public BMenuItem
 			menu->PushState();
 			menu->SetLowUIColor(B_DOCUMENT_BACKGROUND_COLOR);
 			menu->SetViewUIColor(B_DOCUMENT_BACKGROUND_COLOR);
-			menu->SetHighUIColor(B_DOCUMENT_TEXT_COLOR);
+			if (IsEnabled()) {
+				menu->SetHighUIColor(B_DOCUMENT_TEXT_COLOR);
+			} else {
+				rgb_color textColor = ui_color(B_DOCUMENT_TEXT_COLOR);
+				rgb_color backColor = ui_color(B_DOCUMENT_BACKGROUND_COLOR);
+				menu->SetHighColor(disable_color(textColor, backColor));
+			}
 			menu->FillRect(box, B_SOLID_LOW);
 
 			// Draw the character in the center of the menu
@@ -361,7 +370,7 @@ CharacterView::MouseDown(BPoint where)
 			// Memorize click point for dragging
 			fClickPoint = where;
 
-			char text[16];
+			char text[5];
 			UnicodeToUTF8(fCurrentCharacter, text, sizeof(text));
 
 			fMenu = new NoMarginMenu();
@@ -369,6 +378,7 @@ CharacterView::MouseDown(BPoint where)
 				fCharacterHeight));
 			fMenu->SetFont(&fCharacterFont);
 			fMenu->SetFontSize(fCharacterFont.Size() * 2.5);
+			fMenu->ItemAt(0)->SetEnabled(_HasGlyphForCharacter(text));
 
 			uint32 character;
 			BRect rect;
@@ -466,7 +476,7 @@ CharacterView::MouseMoved(BPoint where, uint32 transit,
 		view->FillRect(frame, B_SOLID_LOW);
 
 		// Draw character
-		char text[16];
+		char text[17];
 		UnicodeToUTF8(character, text, sizeof(text));
 
 		view->SetDrawingMode(B_OP_ALPHA);
@@ -504,10 +514,14 @@ CharacterView::Draw(BRect updateRect)
 	BFont font;
 	GetFont(&font);
 
-	rgb_color color = (rgb_color){0, 0, 0, 255};
-	rgb_color highlight = (rgb_color){220, 220, 220, 255};
-	rgb_color enclose = mix_color(highlight,
-		ui_color(B_CONTROL_HIGHLIGHT_COLOR), 128);
+	rgb_color color = ui_color(B_LIST_ITEM_TEXT_COLOR);
+	rgb_color highlight = ui_color(B_LIST_SELECTED_BACKGROUND_COLOR);
+	rgb_color enclose = mix_color(highlight, ui_color(B_CONTROL_HIGHLIGHT_COLOR), 128);
+	rgb_color disabled = tint_color(disable_color(color, ViewColor()),
+		color.IsLight() ? B_LIGHTEN_1_TINT : B_DARKEN_2_TINT);
+	rgb_color selected = ui_color(B_LIST_SELECTED_ITEM_TEXT_COLOR);
+	rgb_color selectedDisabled = tint_color(disable_color(selected, ViewColor()),
+		selected.IsLight() ? B_LIGHTEN_1_TINT : B_DARKEN_2_TINT);
 
 	for (int32 i = _BlockAt(updateRect.LeftTop()); i < (int32)kNumUnicodeBlocks;
 			i++) {
@@ -530,21 +544,24 @@ CharacterView::Draw(BRect updateRect)
 			if (y + fCharacterHeight > updateRect.top
 				&& y < updateRect.bottom) {
 				// Stroke frame around the active character
-				if (fHasCharacter && fCurrentCharacter == c) {
+				bool selection = fHasCharacter && fCurrentCharacter == c;
+				if (selection) {
 					SetHighColor(highlight);
 					FillRect(BRect(x, y, x + fCharacterWidth,
 						y + fCharacterHeight - fGap));
 					SetHighColor(enclose);
 					StrokeRect(BRect(x, y, x + fCharacterWidth,
 						y + fCharacterHeight - fGap));
-
-					SetHighColor(color);
-					SetLowColor(highlight);
 				}
 
 				// Draw character
-				char character[16];
+				char character[5];
 				UnicodeToUTF8(c, character, sizeof(character));
+
+				if (selection)
+					SetHighColor(_HasGlyphForCharacter(character) ? selected : selectedDisabled);
+				else
+					SetHighColor(_HasGlyphForCharacter(character) ? color : disabled);
 
 				DrawString(character,
 					BPoint(x + (fCharacterWidth - StringWidth(character)) / 2,
@@ -791,4 +808,13 @@ CharacterView::_CopyToClipboard(const char* text)
 	}
 
 	be_clipboard->Unlock();
+}
+
+
+bool
+CharacterView::_HasGlyphForCharacter(const char* character) const
+{
+	bool hasGlyph;
+	fCharacterFont.GetHasGlyphs(character, 1, &hasGlyph, false);
+	return hasGlyph;
 }

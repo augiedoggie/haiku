@@ -92,7 +92,7 @@ struct error_pair {
 	E(B_ERRORS_END),
 	E(B_FILE_ERROR),
 	E(B_FILE_EXISTS),
-#ifdef _BEOS_R5_COMPATIBLE_
+#ifdef __HAIKU_BEOS_COMPATIBLE
 #define B_FILE_NOT_FOUND (B_STORAGE_ERROR_BASE + 1)
 	E(B_FILE_NOT_FOUND),
 #endif
@@ -295,6 +295,9 @@ struct error_pair {
 #endif
 #ifdef EOWNERDEAD
 	E(EOWNERDEAD),
+#endif
+#ifdef ESOCKTNOSUPPORT
+	E(ESOCKTNOSUPPORT),
 #endif
 	E(EWOULDBLOCK),
 	E(EXDEV),
